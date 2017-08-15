@@ -18,15 +18,16 @@ from slacker import Slacker
 
 import tailer
 
-def create_slack_session():
+def create_slack_session(slack_token_file):
     #generate token here: https://api.slack.com/custom-integrations/legacy-tokens, put in file in same directory -> "slack_token"
     try:
-        with open('slack_token','r') as s:
-            slack_token = s.readline()
-        slack = Slacker(slack_token)
+        with open(slack_token_file,'r') as s:
+            token = s.readline().split("\n")
+        slack = Slacker(token[0])
         return slack
     except FileNotFoundError:
-        print('Slack token not found, create slack_token file')
+        print('Slack token not found, create slack_token file for sending slack messages')
+        return None
 
 def send_msg(msg, slack=None, slack_usr=None):
     print(msg, end='')
@@ -136,12 +137,12 @@ def post_cutout(rmt, coll_name, exp_name, channel_resource, resolution, st_x, sp
             get_formatted_datetime()) + cutout_msg
         send_msg(msg, slack, slack_usr)
 
-def assert_equal(rmt, z_rng, channel_resource, resolution, img_size, datatype, base_fname, base_path, extension, s3_res, s3_bucket_name):
+def assert_equal(rmt, z_rng, channel_resource, resolution, img_size, datatype, base_fname, base_path, extension, s3_res, s3_bucket_name, slack, slack_usr):
     send_msg('Checking to make sure data has been POSTed correctly\n')
 
     #choose a rand slice:
     rand_slice = np.random.randint(z_rng[0], z_rng[1])
-        
+    
     #load same slice from disk
     im_array_local = read_img_stack(img_size, datatype, [rand_slice], base_fname, base_path, extension, s3_res, s3_bucket_name, z_rng, warn_missing_files=True)
     
@@ -153,14 +154,16 @@ def assert_equal(rmt, z_rng, channel_resource, resolution, img_size, datatype, b
         send_msg('{} Download success\n'.format(get_formatted_datetime()))
     except Exception as e:
         #attempt failed
-        send_msg(str(e) + '\n')
+        send_msg(str(e) + '\n', slack, slack_usr)
+        raise(e)
         
     # assert that cutout from the boss is the same as what was sent
     if np.array_equal(im_array_boss, im_array_local) is not True:
-        send_msg('Slices in boss and local disk are not equal\n')
-        raise Exception('Error: uploaded data does not equal local data')
+        send_msg('Test slice {} in Boss does *NOT* match file {}\n'.format(
+            rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng)), 
+            slack, slack_usr)
     else:
-        send_msg('Test slice {} in Boss matches local file {}\n'.format(
+        send_msg('Test slice {} in Boss matches file {}\n'.format(
             rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng)))
 
 def get_supercube_zs(z_rng):
@@ -193,9 +196,11 @@ def main():
     parser.add_argument('img_size', type=int, nargs=3, help='Volume extent in x (width) y (height) and z (slices/images)')
     parser.add_argument('z_range', type=int, nargs=2, help='Z slices to ingest: start (inclusive) end (exclusive)')
     parser.add_argument('--res', type=int, default=0, help='Resolution to copy (default = 0)')
-    parser.add_argument('--warn_missing_files', type=bool, default=False, help='Warn on missing files instead of failing')
+    parser.add_argument('--warn_missing_files', action='store_true', help='Warn on missing files instead of failing')
     parser.add_argument('--slack_usr', type=str, default=None, help='User to send slack message to (e.g. USERNAME)')
     parser.add_argument('--s3_bucket_name', type=str, default=None, help='S3 bucket name')
+    parser.add_argument('--boss_config_file', type=str, default='neurodata.cfg', help='Path and filename for Boss config (config file w/ server and API Key)')
+    parser.add_argument('--slack_token_file', type=str, default='slack_token', help='Path & filename for slack token (key only)')
 
     args = parser.parse_args()
 
@@ -215,41 +220,46 @@ def main():
     warn_missing_files = args.warn_missing_files
     slack_usr = args.slack_usr
     s3_bucket_name = args.s3_bucket_name
+    boss_config_file = args.boss_config_file
+    slack_token_file = args.slack_token_file
 
     if datasource == 's3':
         if s3_bucket_name == None:
-            raise Exception('s3 bucket not defined but s3 datasource chosen')
-        s3_res = boto3.resource('s3')
+            raise ValueError('s3 bucket not defined but s3 datasource chosen')
+        try:
+            s3_res = boto3.resource('s3')
+        except ValueError:
+            raise ValueError('AWS credentials not set up?')
     else:
         s3_res = None
-
-    stride_x = 1024
-    stride_y = 1024
 
     #extract img_size and datatype to double check
     first_fname = get_img_fname(base_fname, base_path, extension, z_rng[0], z_rng)
     im_width, im_height, im_datatype = get_img_info(first_fname, s3_res, s3_bucket_name)
-
     if img_size[0] != im_width or img_size[1] != im_height or dtype != im_datatype:
         send_msg('Mismatch between image file and input parameters. Determined image width: {}, height: {}, datatype: {}'.format(
             im_width, im_height, im_datatype))
-        raise Exception('Image attributes do not match')
+        raise ValueError('Image attributes do not match arguments')
 
     #create a session for the BOSS using intern
-    boss_config_file = 'neurodata.cfg'
     rmt = BossRemote(boss_config_file)
+
+    #creating the slack session
+    slack = create_slack_session(slack_token_file)
 
     #create or get the boss resources for the data
     coll, _, exp, ch = setup_boss_resources(rmt, coll_name, exp_name, ch_name, voxel_size, voxel_unit, dtype, res, img_size)
-
-    slack = create_slack_session()
     send_msg('Resources set up. Collection: {}, Experiment: {}, Channel: {}\n'.format(coll.name, exp.name, ch.name))
     
+
+    stride_x = 1024
+    stride_y = 1024
     z_buckets = get_supercube_zs(z_rng)
     #load images files in stacks of 16 at a time into numpy array
     for _, z_slices in z_buckets.items():
         #read images into numpy array
-        im_array = read_img_stack(img_size, dtype, z_slices, base_fname, base_path, extension, s3_res, s3_bucket_name, z_rng, warn_missing_files)
+        im_array = read_img_stack(img_size, dtype, z_slices, base_fname, base_path, extension, 
+                                  s3_res, s3_bucket_name, z_rng, warn_missing_files)
 
         # slice into np array blocks
         for st_x in range(0, img_size[0], stride_x):
@@ -265,13 +275,19 @@ def main():
                 data = np.asarray(data, order='C')
                 
                 # POST each block to the BOSS
-                post_cutout(rmt, coll.name, exp.name, ch, res, st_x, sp_x, st_y, sp_y, z_slices[0], z_slices[-1] + 1, data, attempts=3)
+                post_cutout(rmt, coll.name, exp.name, ch, res, st_x, sp_x, st_y, sp_y, z_slices[0], z_slices[-1] + 1,
+                            data, attempts=3)
 
-    #checking one of the slices
-    assert_equal(rmt, z_rng, ch, res, img_size, dtype, base_fname, base_path, extension, s3_res, s3_bucket_name)
+    #checking data posted correctly
+    assert_equal(rmt, z_rng, ch, res, img_size, dtype, base_fname, base_path, extension, s3_res, s3_bucket_name, slack, slack_usr)
     
-    send_msg('{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\n'.format(
-        get_formatted_datetime(), z_rng, coll.name, exp.name, ch.name
+    ndviz_link = ("https://viz-dev.boss.neurodata.io/#!{{'layers':{{'{}':{{'type':'image'_'source':'"
+                "boss://https://api.boss.neurodata.io/{}/{}/{}'}}}}_'navigation':{{'pose':{{'position':"
+                "{{'voxelSize':[{}_{}_{}]_'voxelCoordinates':[{}_{}_{}]}}}}_'zoomFactor':70}}}}"
+                ).format(ch_name, coll_name, exp_name, ch_name, voxel_size[0], voxel_size[1], voxel_size[2], 0, 0, z_rng[0])
+
+    send_msg('{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\n{}\n'.format(
+        get_formatted_datetime(), z_rng, coll.name, exp.name, ch.name, ndviz_link
         ), slack, slack_usr)
 
 if __name__ == '__main__':

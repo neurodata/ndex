@@ -3,9 +3,9 @@ Python 3 commmand line program to ingest large volume image data into the cloud 
 
 Supports loading images from local storage or an S3 bucket.
 
-This program loads 16 image files at a time into memory and POSTs the data in smaller blocks to avoid write locks by the Boss.  With large image sizes it can be memory intensive.
+This program loads 16 image files (either PNG or TIFF) at a time into memory and POSTs the data in smaller blocks to avoid write locks by the Boss.  With large image sizes it can be memory intensive.  Can be run simultaneously with non overlapping z-slices to increase the speed of the ingest.
 
-It generates a log file in the path from which you run which you can use to monitor the performance and success of your ingest job.
+Running the script will log its behavior to a file (`log.txt`) and can optionally send Slack messages when it finishes a job and if it encouters errors.
 
 ### Install:
 1. clone this directory
