@@ -143,28 +143,50 @@ def assert_equal(rmt, z_rng, channel_resource, resolution, img_size, datatype, b
     #choose a rand slice:
     rand_slice = np.random.randint(z_rng[0], z_rng[1])
     
-    #load same slice from disk
+    #load source data (one z slice)
     im_array_local = read_img_stack(img_size, datatype, [rand_slice], base_fname, base_path, extension, s3_res, s3_bucket_name, z_rng, z_step, warn_missing_files=True)
     
-    #cutout a single slice and compare to image
-    try:
-        send_msg('{} Downloading full size z-slice from BOSS'.format(get_formatted_datetime()))
-        im_array_boss = rmt.get_cutout(channel_resource, resolution, 
-            [0, img_size[0]], [0, img_size[1]], [rand_slice, rand_slice+1])
-        send_msg('{} Download success'.format(get_formatted_datetime()))
-    except Exception as e:
-        #attempt failed
-        send_msg(str(e), slack, slack_usr)
-        raise(e)
-        
+    #assemble data from Boss
+    im_array_boss = np.zeros(np.shape(im_array_local), dtype=type(im_array_local[0,0]))
+
+    xM = np.shape(im_array_local)[1]
+    yM = np.shape(im_array_local)[2]
+    stride = 512
+    attempts = 3
+    for xi in range(0, xM, stride):
+        xi_stop = xi+stride
+        if xi_stop > xM:
+            xi_stop = xM
+        for yi in range(0, yM, stride):
+            yi_stop = yi+stride
+            if yi_stop > yM:
+                yi_stop = yM
+            for attempt in range(attempts-1):
+                try:
+                    im_array_boss[0, xi:xi_stop, yi:yi_stop] = rmt.get_cutout(
+                        channel_resource, resolution, [yi, yi_stop], [xi, xi_stop], [rand_slice, rand_slice+1]
+                    )
+                except Exception as e:
+                    #attempt failed
+                    send_msg(str(e))
+                    if attempt != attempts-1:
+                        time.sleep(2**(attempt+1))
+                else:
+                    break
+            else:
+                # we failed all the attempts - deal with the consequences.
+                msg = '{} Error: download cutout failed after multiple attempts'.format(
+                    get_formatted_datetime())
+                send_msg(msg, slack, slack_usr)
+
     # assert that cutout from the boss is the same as what was sent
-    if np.array_equal(im_array_boss, im_array_local) is not True:
+    if np.array_equal(im_array_boss, im_array_local):
+        send_msg('Test slice {} in Boss matches file {}'.format(
+            rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng, z_step)))
+    else:
         send_msg('Test slice {} in Boss does *NOT* match file {}'.format(
             rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng, z_step)), 
             slack, slack_usr)
-    else:
-        send_msg('Test slice {} in Boss matches file {}'.format(
-            rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng, z_step)))
 
 def get_supercube_zs(z_rng):
     first = z_rng[0]    # inclusive
