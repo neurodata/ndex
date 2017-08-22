@@ -20,24 +20,21 @@ channel = 'Ch1'
 file_format = 'tif'
 source_type = 's3'
 collection = 'COLL'
-voxel_size = 'XXX YYY ZZZ' # float/int
+voxel_size = 'XXX YYY ZZZ'  # float/int
 voxel_unit = 'micrometers'
 data_type = 'uint16'
 data_dimensions = "XXXX YYYY ZZZZ"
-zrange = [0, ZZZZ] # first inclusive, last _exclusive_ list of sections to ingest, integers
+# first inclusive, last _exclusive_ list of sections to ingest, integers
+zrange = [0, ZZZZ]
 workers = 6    # Number of workers to use, watch for out of memory errors
 
 
-
-
-
-
-range_per_worker = (zrange[1] - zrange[0])//workers
+range_per_worker = (zrange[1] - zrange[0]) // workers
 
 print("# Range per worker: ", range_per_worker)
 
-if range_per_worker % 16: #supercuboids are 16 z slices
-    range_per_worker =  ((range_per_worker // 16) + 1)* 16
+if range_per_worker % 16:  # supercuboids are 16 z slices
+    range_per_worker = ((range_per_worker // 16) + 1) * 16
 
 print("# Range per worker (rounded up): ", range_per_worker)
 
@@ -48,7 +45,7 @@ for worker in range(workers):
     if start_z > zrange[1]:
         # No point start a useless thread
         continue
-    end_z = min(zrange[1], (worker+1) * range_per_worker)
+    end_z = min(zrange[1], (worker + 1) * range_per_worker)
 
     cmd = "python " + script + " "
     cmd += ' --base_path ' + shlex.quote(data_directory)
