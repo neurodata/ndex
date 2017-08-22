@@ -52,12 +52,10 @@ def setup_boss_experiment(rmt, exp_name, coll_name, coord_frame_name, image_size
     return get_boss_project(rmt, exp_setup)
 
 
-def setup_boss_channel(rmt, ch_name, coll_name, exp_name, datatype, res):
-    # ch_setup = ChannelResource(
-    #     ch_name, coll_name, exp_name, "image", "", 0, datatype, res)
-    # return get_boss_project(rmt, ch_setup)
-    rmt.get_channel(ch_name, coll_name, exp_name)
-    rmt.
+def setup_boss_channel(rmt, ch_name, coll_name, exp_name, datatype, res, ch_type='image', ch_description=''):
+    ch_setup = ChannelResource(
+        ch_name, coll_name, exp_name, ch_type, ch_description, 0, datatype, res)
+    return get_boss_project(rmt, ch_setup)
 
 
 def setup_boss_resources(rmt, coll_name, exp_name, ch_name, voxel_size, voxel_unit, datatype, res, image_size):

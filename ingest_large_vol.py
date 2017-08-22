@@ -4,6 +4,7 @@ import os
 import re
 from collections import defaultdict
 import argparse
+import sys
 
 from intern.remote.boss import BossRemote
 from boss_resources import setup_boss_resources
@@ -258,6 +259,8 @@ def main():
                         help='Path & filename for slack token (key only)')
     parser.add_argument('--z_step', type=int, default=1,
                         help='Z step size for input files, default 1 (on Boss, z step is always 1, and z_rng and img_size for z should both assume increments of 1)')
+    parser.add_argument('--create_resources', action='store_true',
+                        help='Creates the boss resources and exits')
 
     args = parser.parse_args()
 
@@ -280,7 +283,9 @@ def main():
     boss_config_file = args.boss_config_file
     slack_token_file = args.slack_token_file
     z_step = args.z_step
+    create_resources = args.create_resources
 
+    # initiating the S3 resource:
     if datasource == 's3':
         if s3_bucket_name is None:
             raise ValueError('s3 bucket not defined but s3 datasource chosen')
@@ -293,7 +298,7 @@ def main():
             send_msg('s3 bucket name input but source is local')
         s3_res = None
 
-    # extract img_size and datatype to double check
+    # extract img_size and datatype to check inputs
     first_fname = get_img_fname(
         base_fname, base_path, extension, z_rng[0], z_rng, z_step)
     im_width, im_height, im_datatype = get_img_info(
@@ -314,6 +319,9 @@ def main():
         rmt, coll_name, exp_name, ch_name, voxel_size, voxel_unit, dtype, res, img_size)
     send_msg('Resources set up. Collection: {}, Experiment: {}, Channel: {}'.format(
         coll.name, exp.name, ch.name))
+
+    if create_resources:
+        sys.exit(0)
 
     stride_x = 1024
     stride_y = 1024
