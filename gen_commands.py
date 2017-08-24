@@ -75,7 +75,7 @@ print('Expected memory usage per worker {} GB'.format(round(mem_per_w)))
 
 # amount of memory total
 mem_tot = mem_per_w * workers
-print('Expected total memory usage: {} GB', round(mem_tot))
+print('Expected total memory usage: {} GB'.format(round(mem_tot)))
 
 
 cmd = "python " + script + " "
