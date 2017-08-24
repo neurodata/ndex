@@ -93,6 +93,9 @@ cmd += ' --img_size ' + data_dimensions
 cmd += ' --z_range ' + ' '.join(list(map(str, zrange)))
 cmd += ' --boss_config_file ' + boss_config_file
 cmd += ' --slack_token_file ' + slack_token
+if source_type == 's3':
+    cmd += " --s3_bucket_name " + s3_bucket_name
+    cmd += ' --aws_profile ' + aws_profile
 cmd += ' --create_resources '
 print(cmd)
 
