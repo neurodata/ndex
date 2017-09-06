@@ -261,6 +261,8 @@ def main():
                         help='Z step size for input files, default 1 (on Boss, z step is always 1, and z_rng and img_size for z should both assume increments of 1)')
     parser.add_argument('--create_resources', action='store_true',
                         help='Creates the boss resources and exits')
+    parser.add_argument('--aws_profile', type=str, default='default',
+                        help='Name of profile in .aws/credentials file (default = default)')
 
     args = parser.parse_args()
 
@@ -284,13 +286,15 @@ def main():
     slack_token_file = args.slack_token_file
     z_step = args.z_step
     create_resources = args.create_resources
+    aws_profile = args.aws_profile
 
     # initiating the S3 resource:
     if datasource == 's3':
         if s3_bucket_name is None:
             raise ValueError('s3 bucket not defined but s3 datasource chosen')
         try:
-            s3_res = boto3.resource('s3')
+            s3_session = boto3.session.Session(profile_name=aws_profile)
+            s3_res = s3_session.resource('s3')
         except ValueError:
             raise ValueError('AWS credentials not set up?')
     else:
