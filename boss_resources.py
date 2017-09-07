@@ -33,7 +33,7 @@ def setup_boss_coord_frame(rmt, coord_frame_name, image_size, voxel_size, voxel_
     return get_boss_project(rmt, coord_setup)
 
 
-def create_hierarchy_levels(image_size, lowest_res=128):
+def create_hierarchy_levels(image_size, lowest_res=64):
     max_xy = max(image_size[0:1])
     return math.ceil(math.log(max_xy / lowest_res, 2))
 
