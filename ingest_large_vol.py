@@ -150,17 +150,7 @@ def post_cutout(rmt, coll_name, exp_name, channel_resource, resolution, st_x, sp
         send_msg(msg, slack, slack_usr)
 
 
-def assert_equal(rmt, z_rng, channel_resource, resolution, img_size, datatype, base_fname, base_path, extension, s3_res, s3_bucket_name, z_step, slack, slack_usr):
-    send_msg('Checking to make sure data has been POSTed correctly')
-
-    # choose a rand slice:
-    rand_slice = np.random.randint(z_rng[0], z_rng[1])
-
-    # load source data (one z slice)
-    im_array_local = read_img_stack(img_size, datatype, [
-                                    rand_slice], base_fname, base_path, extension, s3_res, s3_bucket_name, z_rng, z_step, warn_missing_files=True)
-
-    # assemble data from Boss
+def download_rand_slice(rmt, channel_resource, resolution, im_array_local, rand_slice, slack, slack_usr):
     im_array_boss = np.zeros(np.shape(im_array_local),
                              dtype=type(im_array_local[0, 0]))
 
@@ -194,6 +184,30 @@ def assert_equal(rmt, z_rng, channel_resource, resolution, img_size, datatype, b
                 msg = '{} Error: download cutout failed after multiple attempts'.format(
                     get_formatted_datetime())
                 send_msg(msg, slack, slack_usr)
+    return im_array_boss
+
+
+def assert_equal(rmt, z_rng, channel_resource, resolution, img_size, datatype, base_fname, base_path, extension, s3_res, s3_bucket_name, z_step, slack, slack_usr):
+    send_msg('Checking to make sure data has been POSTed correctly')
+
+    # choose a rand slice:
+    rand_slice = np.random.randint(z_rng[0], z_rng[1])
+
+    # load source data (one z slice)
+    im_array_local = read_img_stack(img_size, datatype, [
+                                    rand_slice], base_fname, base_path, extension, s3_res, s3_bucket_name, z_rng, z_step, warn_missing_files=True)
+
+    # load data from Boss
+    msg = '{} Getting random z slice from BOSS for comparison'.format(
+        get_formatted_datetime())
+    send_msg(msg)
+
+    im_array_boss = download_rand_slice(
+        rmt, channel_resource, resolution, im_array_local, rand_slice, slack, slack_usr)
+
+    msg = '{} Z slice from BOSS downloaded'.format(
+        get_formatted_datetime())
+    send_msg(msg)
 
     # assert that cutout from the boss is the same as what was sent
     if np.array_equal(im_array_boss, im_array_local):
@@ -357,13 +371,11 @@ def main():
     assert_equal(rmt, z_rng, ch, res, img_size, dtype, base_fname, base_path,
                  extension, s3_res, s3_bucket_name, z_step, slack, slack_usr)
 
-    ndviz_link = ("https://viz-dev.boss.neurodata.io/#!{{'layers':{{'{}':{{'type':'image'_'source':'"
-                  "boss://https://api.boss.neurodata.io/{}/{}/{}'}}}}_'navigation':{{'pose':{{'position':"
-                  "{{'voxelSize':[{}_{}_{}]_'voxelCoordinates':[{}_{}_{}]}}}}_'zoomFactor':70}}}}"
-                  ).format(ch_name, coll_name, exp_name, ch_name, voxel_size[0], voxel_size[1], voxel_size[2], 0, 0, z_rng[0])
+    ch_link = (
+        'http://ben-dev.neurodata.io/channel_detail/{}/{}/{}/').format(coll_name, exp_name, ch_name)
 
-    send_msg('{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\n{}'.format(
-        get_formatted_datetime(), z_rng, coll.name, exp.name, ch.name, ndviz_link
+    send_msg('{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\nView properties of channel and start downsample job on ndwebtools: {}'.format(
+        get_formatted_datetime(), z_rng, coll.name, exp.name, ch.name, ch_link
     ), slack, slack_usr)
 
 
