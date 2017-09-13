@@ -14,6 +14,7 @@ import boto3
 import numpy as np
 
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 
 from slacker import Slacker
 
