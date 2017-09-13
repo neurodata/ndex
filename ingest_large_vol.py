@@ -280,103 +280,84 @@ def main():
 
     args = parser.parse_args()
 
-    base_path = args.base_path
-    base_fname = args.base_filename
-    extension = args.extension
-    datasource = args.datasource
-    coll_name = args.collection
-    exp_name = args.experiment
-    ch_name = args.channel
-    voxel_size = args.voxel_size
-    voxel_unit = args.voxel_unit
-    dtype = args.datatype
-    img_size = args.img_size  # list of integers, x & y & z
-    z_rng = args.z_range
-    res = args.res
-    warn_missing_files = args.warn_missing_files
-    slack_usr = args.slack_usr
-    s3_bucket_name = args.s3_bucket_name
-    boss_config_file = args.boss_config_file
-    slack_token_file = args.slack_token_file
-    z_step = args.z_step
-    create_resources = args.create_resources
-    aws_profile = args.aws_profile
-
     # initiating the S3 resource:
-    if datasource == 's3':
-        if s3_bucket_name is None:
+    if args.datasource == 's3':
+        if args.s3_bucket_name is None:
             raise ValueError('s3 bucket not defined but s3 datasource chosen')
         try:
-            s3_session = boto3.session.Session(profile_name=aws_profile)
+            s3_session = boto3.session.Session(profile_name=args.aws_profile)
             s3_res = s3_session.resource('s3')
         except ValueError:
             raise ValueError('AWS credentials not set up?')
     else:
-        if s3_bucket_name is not None:
+        if args.s3_bucket_name is not None:
             send_msg('s3 bucket name input but source is local')
         s3_res = None
 
     # extract img_size and datatype to check inputs
     first_fname = get_img_fname(
-        base_fname, base_path, extension, z_rng[0], z_rng, z_step)
+        args.base_filename, args.base_path, args.extension, args.z_range[0], args.z_range, args.z_step)
     im_width, im_height, im_datatype = get_img_info(
-        first_fname, s3_res, s3_bucket_name)
-    if img_size[0] != im_width or img_size[1] != im_height or dtype != im_datatype:
+        first_fname, s3_res, args.s3_bucket_name)
+    if args.img_size[0] != im_width or args.img_size[1] != im_height or args.datatype != im_datatype:
         send_msg('Mismatch between image file and input parameters. Determined image width: {}, height: {}, datatype: {}'.format(
             im_width, im_height, im_datatype))
         raise ValueError('Image attributes do not match arguments')
 
     # create a session for the BOSS using intern
-    rmt = BossRemote(boss_config_file)
+    rmt = BossRemote(args.boss_config_file)
 
     # creating the slack session
-    slack = create_slack_session(slack_token_file)
+    slack = create_slack_session(args.slack_token_file)
 
     # create or get the boss resources for the data
     coll, _, exp, ch = setup_boss_resources(
-        rmt, coll_name, exp_name, ch_name, voxel_size, voxel_unit, dtype, res, img_size)
+        rmt, args.collection, args.experiment, args.channel, args.voxel_size, args.voxel_unit,
+        args.datatype, args.res, args.img_size)
     send_msg('Resources set up. Collection: {}, Experiment: {}, Channel: {}'.format(
         coll.name, exp.name, ch.name))
 
-    if create_resources:
+    if args.create_resources:
         sys.exit(0)
 
     stride_x = 1024
     stride_y = 1024
-    z_buckets = get_supercube_zs(z_rng)
+    z_buckets = get_supercube_zs(args.z_range)
     # load images files in stacks of 16 at a time into numpy array
     for _, z_slices in z_buckets.items():
         # read images into numpy array
-        im_array = read_img_stack(img_size, dtype, z_slices, base_fname, base_path, extension,
-                                  s3_res, s3_bucket_name, z_rng, z_step, warn_missing_files)
+        im_array = read_img_stack(args.img_size, args.datatype, z_slices, args.base_filename,
+                                  args.base_path, args.extension, s3_res, args.s3_bucket_name,
+                                  args.z_range, args.z_step, args.warn_missing_files)
 
         # slice into np array blocks
-        for st_x in range(0, img_size[0], stride_x):
+        for st_x in range(0, args.img_size[0], stride_x):
             sp_x = st_x + stride_x
-            if sp_x > img_size[0]:
-                sp_x = img_size[0]
+            if sp_x > args.img_size[0]:
+                sp_x = args.img_size[0]
 
-            for st_y in range(0, img_size[1], stride_y):
+            for st_y in range(0, args.img_size[1], stride_y):
                 sp_y = st_y + stride_y
-                if sp_y > img_size[1]:
-                    sp_y = img_size[1]
+                if sp_y > args.img_size[1]:
+                    sp_y = args.img_size[1]
                 data = im_array[:, st_y:sp_y, st_x:sp_x]
                 data = np.asarray(data, order='C')
 
                 # POST each block to the BOSS
-                post_cutout(rmt, coll.name, exp.name, ch, res, st_x, sp_x, st_y, sp_y, z_slices[0], z_slices[-1] + 1,
+                post_cutout(rmt, coll.name, exp.name, ch, args.res, st_x, sp_x, st_y, sp_y,
+                            z_slices[0], z_slices[-1] + 1,
                             data, attempts=3)
 
     # checking data posted correctly
-    assert_equal(rmt, z_rng, ch, res, img_size, dtype, base_fname, base_path,
-                 extension, s3_res, s3_bucket_name, z_step, slack, slack_usr)
+    assert_equal(rmt, args.z_range, ch, args.res, args.img_size, args.datatype, args.base_filename, args.base_path,
+                 args.extension, s3_res, args.s3_bucket_name, args.z_step, slack, args.slack_usr)
 
     ch_link = (
-        'http://ben-dev.neurodata.io/channel_detail/{}/{}/{}/').format(coll_name, exp_name, ch_name)
+        'http://ben-dev.neurodata.io/channel_detail/{}/{}/{}/').format(args.collection, args.experiment, args.channel)
 
     send_msg('{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\nView properties of channel and start downsample job on ndwebtools: {}'.format(
-        get_formatted_datetime(), z_rng, coll.name, exp.name, ch.name, ch_link
-    ), slack, slack_usr)
+        get_formatted_datetime(), args.z_range, coll.name, exp.name, ch.name, ch_link
+    ), slack, args.slack_usr)
 
 
 if __name__ == '__main__':
