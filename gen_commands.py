@@ -71,11 +71,11 @@ elif data_type == 'uint16':
 elif data_type == 'uint64':
     mult = 8
 mem_per_w = ddim_xy[0] * ddim_xy[1] * mult * 16 / 1024 / 1024 / 1024
-print('Expected memory usage per worker {} GB'.format(round(mem_per_w)))
+print('Expected memory usage per worker {:.1f} GB'.format(mem_per_w))
 
 # amount of memory total
 mem_tot = mem_per_w * workers
-print('Expected total memory usage: {} GB'.format(round(mem_tot)))
+print('Expected total memory usage: {:.1f} GB'.format(mem_tot))
 
 
 cmd = "python " + script + " "
@@ -100,13 +100,13 @@ cmd += ' --create_resources '
 print(cmd)
 
 for worker in range(workers):
-    start_z = worker * range_per_worker
+    start_z = worker * range_per_worker + zrange[0]
     if start_z < zrange[0]:
         start_z = zrange[0]
     if start_z > zrange[1]:
         # No point start a useless thread
         continue
-    end_z = min(zrange[1], (worker + 1) * range_per_worker)
+    end_z = min(zrange[1], (worker + 1) * range_per_worker + zrange[0])
 
     cmd = "python " + script + " "
     cmd += ' --base_path ' + shlex.quote(data_directory)
