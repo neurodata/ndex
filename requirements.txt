@@ -1,4 +1,4 @@
--e git://github.com/jhuapl-boss/intern.git@d6aa1bb25e276adf751a8abdb0f39da24a9db097#egg=intern
+-e git://github.com/jhuapl-boss/intern.git#egg=intern
 slacker>=0.9.50
 boto3>=1.4.6
 tailer>=0.4.1
