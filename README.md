@@ -12,28 +12,38 @@ Running the script will log its behavior to a file (`log.txt`) and can optionall
 
 1. Install or insure you have Python 3 (x64)
 1. Clone this repository
-1. Create & activate virtualenv
-    1. Linux:
+    1. `git clone https://github.com/neurodata/ingest_large_vol.git`
+1. Install virtualenv
+    1. Linux
         ```bash
         > pip3 install virtualenv
-        > virtualenv ENV -p /usr/bin/python3
-        > source ENV/bin/activate
         ```
-    1. Windows:
+    1. Windows
         ```dos
         > cd C:\Users\USERNAME\AppData\Local\Programs\Python\Python36\Scripts\
         > pip.exe install virtualenv
+        ```
+1. Create virtual environment for ingest jobs
+    1. Linux
+        ```bash
+        > virtualenv ENV -p /usr/bin/python3
+        > source ENV/bin/activate
+        ```
+    1. Windows
+        ```dos
         > virtualenv.exe C:\Users\USERNAME\ENV -p C:\Users\USERNAME\AppData\Local\Programs\Python\Python36\python.exe
         > cd INGEST_LARGE_VOL_PATH
         > C:\Users\USERNAME\ENV\Scripts\activate.bat
         ```
-1. Install dependencies
+1. Install compiler for Windows
+    1. [Visual C++ 2015 Build Tools](http://landinghub.visualstudio.com/visual-cpp-build-tools)
+1. Install requirements
     ```bash
-    pip install -r requirements.txt
+    > pip install -r requirements.txt
     ```
 1. generate a [Boss API key](https://api.boss.neurodata.io/v1/mgmt/token) and save it to file named `neurodata.cfg` (example provided: `neurodata.cfg.example`)
 1. To send messages through Slack (optional) you will also need a [Slack API key](https://api.slack.com/custom-integrations/legacy-tokens) and save to file `slack_token`
-1. To perform ingest, you must have the `resource manager` level of permissions (talk to an admin to get these privileges)
+1. To perform ingest, you must have `resource manager` permissions (talk to an admin to get these privileges)
 
 ## Run
 
