@@ -1,3 +1,4 @@
+import time
 import unittest
 
 from parse_log import *
@@ -6,10 +7,11 @@ from parse_log import *
 class ParseLogTest(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.startTime = time.time()
 
     def tearDown(self):
-        pass
+        t = time.time() - self.startTime
+        print('{:03.1f}s: {}'.format(t, self.id()))
 
     def test_parse_log(self):
         log_data = '''Resources set up. Collection: ben_dev, Experiment: dev_ingest_2, Channel: def_files

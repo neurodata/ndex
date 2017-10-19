@@ -1,7 +1,8 @@
 import os
+import re
+import time
 import unittest
 from datetime import datetime
-import re
 
 import numpy as np
 import png
@@ -13,22 +14,28 @@ from ingest_large_vol import *
 class IngestLargeVolTest(unittest.TestCase):
 
     def setUp(self):
+        self.startTime = time.time()
+
+        self.rmt = BossRemote('neurodata.cfg')
+
         coll_name = 'ben_dev'
         exp_name = 'dev_ingest_4'
         ch_name = 'def_files'
-        self.rmt = BossRemote('neurodata.cfg')
         self.boss_res_params = BossResParams(coll_name, exp_name, ch_name)
-        self.boss_res_params.setup_resources(self.rmt)
 
         self.x_size = 1000
         self.y_size = 1024
-        self.dtype = self.boss_res_params.datatype
+        self.dtype = 'uint16'
 
         self.z = 0
         self.z_rng = [0, 16]
         self.fileprefix = 'img_<p:4>'
         self.data_directory = 'local_img_test_data\\'
         self.z_step = 1
+
+    def tearDown(self):
+        t = time.time() - self.startTime
+        print('{:03.1f}s: {}'.format(t, self.id()))
 
     def test_send_msg(self):
         msg = 'test_message_' + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -89,8 +96,9 @@ class IngestLargeVolTest(unittest.TestCase):
 
         z_slices = range(self.z_rng[0], self.z_rng[1])
         z_step = 1
+        self.boss_res_params.setup_resources(self.rmt)
         im_array = read_img_stack(self.boss_res_params, z_slices, self.fileprefix, self.data_directory,
-                                  file_format, s3_res, s3_bucket_name, self.z_rng, self.z_step, warn_missing_files=False)
+                                  file_format, s3_res, s3_bucket_name, self.z_rng, self.z_step)
 
         # check to make sure each image is equal to each z index in the array
         for z in z_slices:
@@ -112,6 +120,7 @@ class IngestLargeVolTest(unittest.TestCase):
         st_x, sp_x, st_y, sp_y, st_z, sp_z = (
             0, x_size, 0, y_size, 0, self.z_rng[1])
 
+        self.boss_res_params.setup_resources(self.rmt)
         ret_val = post_cutout(self.boss_res_params, st_x, sp_x, st_y, sp_y,
                               st_z, sp_z, data, attempts=5, slack=None, slack_usr=None)
 

@@ -1,4 +1,5 @@
 import re
+import time
 import unittest
 
 import tifffile as tiff
@@ -10,10 +11,13 @@ from repeat_cutouts import *
 class RepeatCutoutsTest(unittest.TestCase):
 
     def setUp(self):
+        self.startTime = time.time()
+
         self.rmt = BossRemote('neurodata.cfg')
 
     def tearDown(self):
-        pass
+        t = time.time() - self.startTime
+        print('{:03.1f}s: {}'.format(t, self.id()))
 
     def test_parse_cut_line(self):
         cutout_text = 'Coll: ben_dev, Exp: dev_ingest_2, Ch: def_files, x: (0, 512), y: (0, 512), z: (0, 16)\n'

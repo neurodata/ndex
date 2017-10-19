@@ -1,10 +1,10 @@
+import configparser
+import time
 import unittest
 
 import requests
-import configparser
 
 from boss_resources import *
-# from intern.remote.boss import BossRemote
 
 BOSS_URL = 'https://api.boss.neurodata.io/latest/'
 
@@ -12,11 +12,14 @@ BOSS_URL = 'https://api.boss.neurodata.io/latest/'
 class TestBossResources(unittest.TestCase):
 
     def setUp(self):
+        self.startTime = time.time()
+
         # create a session for the BOSS using intern
         self.rmt = BossRemote('neurodata.cfg')
 
     def tearDown(self):
-        pass
+        t = time.time() - self.startTime
+        print('{:03.1f}s: {}'.format(t, self.id()))
 
     def test_create_boss_res_params_just_names(self):
 
