@@ -105,3 +105,8 @@ log.txt
 .vscode/
 neurodata.cfg
 slack_token
+
+local_img_test_data/
+repeat_cutouts*.txt
+log*.txt
+*_log_*.txt

@@ -48,5 +48,10 @@ Running the script will log its behavior to a file (`log.txt`) and can optionall
 ## Run
 
 * To generate list of commands, edit the `gen_commands.py` example file
-  * Add your experiment details, and run it (`python3 gen_commands.py`).  It will generate the complete command line(s) needed to do the ingest job and estimate the amount of memory needed.  You can then copy and run those commands.
+    * Add your experiment details, and run it (`python3 gen_commands.py`).  It will generate the complete command line(s) needed to do the ingest job and estimate the amount of memory needed.  You can then copy and run those commands.
 * Alternatively, run: `python3 ingest_large_vol.py -h` to see the complete list of command line options.
+* Example
+    * First create the resources:
+        * `python ingest_large_vol.py  --base_path "X:\\2017-09-03\\Im10x_Mus_DRN-VTA_2376_20170903_092612\\VW0\\Para_Stitched_ch0\\RES32343x18167x1381)\\" --base_filename "im_ch0_z<p:4>" --extension tif --datasource local --collection ailey-dev --experiment DRN-VTA_2376 --channel Ch0 --voxel_size 0.585 0.585 5 --voxel_unit micrometers --datatype uint16 --img_size 18167 32343 1381 --z_range 1 1381 --boss_config_file neurodata.cfg.txt --create_resources`
+    * Then start the ingest:
+        * `python ingest_large_vol.py  --base_path "X:\\2017-09-03\\Im10x_Mus_DRN-VTA_2376_20170903_092612\\VW0\\Para_Stitched_ch0\\RES32343x18167x1381)\\" --base_filename "im_ch0_z<p:4>" --extension tif --datasource local --collection ailey-dev --experiment DRN-VTA_2376 --channel Ch0 --voxel_size 0.585 0.585 5 --voxel_unit micrometers --datatype uint16 --img_size 18167 32343 1381 --z_range 1 1381 --boss_config_file neurodata.cfg.txt`

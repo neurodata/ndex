@@ -1,27 +1,24 @@
-from datetime import datetime
-import time
+import argparse
 import os
 import re
-from collections import defaultdict
-import argparse
 import sys
-
-from intern.remote.boss import BossRemote
-from boss_resources import setup_boss_resources
+import time
+from collections import defaultdict
+from datetime import datetime
 
 import boto3
-
 import numpy as np
-
+import tailer
 from PIL import Image
-Image.MAX_IMAGE_PIXELS = None
-
 from slacker import Slacker
 
-import tailer
+from boss_resources import BossResParams
+from intern.remote.boss import BossRemote
+
+Image.MAX_IMAGE_PIXELS = None
 
 
-def create_slack_session(slack_token_file):
+def create_slack_session(boss_res_params, slack_token_file):
     # generate token here: https://api.slack.com/custom-integrations/legacy-tokens, put in file in same directory -> "slack_token"
     try:
         with open(slack_token_file, 'r') as s:
@@ -29,18 +26,27 @@ def create_slack_session(slack_token_file):
         slack = Slacker(token[0])
         return slack
     except FileNotFoundError:
-        print('Slack token not found, create slack_token file for sending slack messages')
+        send_msg(boss_res_params,
+                 'Slack token file not found: {}, create slack_token file for sending Slack messages'.format(
+                     slack_token_file))
         return None
 
 
-def send_msg(msg, slack=None, slack_usr=None):
+def gen_log_fname(boss_res_params):
+    return '_'.join(('ingest_log', boss_res_params.coll_name,
+                     boss_res_params.exp_name, boss_res_params.ch_name)) + '.txt'
+
+
+def send_msg(boss_res_params, msg, slack=None, slack_usr=None):
+    logfile = gen_log_fname(boss_res_params)
+
     print(msg)
-    with open('log.txt', 'a') as f:
+    with open(logfile, 'a') as f:
         f.write(msg + '\n')
     if slack is not None and slack_usr is not None:
         slack.chat.post_message('@' + slack_usr, msg,
                                 username='local_ingest.py')
-        content = tailer.tail(open('log.txt'), 10)
+        content = tailer.tail(open(logfile), 10)
         slack.files.upload(content='\n'.join(content), channels='@' + slack_usr,
                            title=get_formatted_datetime() + '_tail_of_log')
 
@@ -63,8 +69,8 @@ def get_img_fname(base_fname, base_path, extension, z_index, z_rng, z_step):
     return os.path.join(base_path, "{}.{}".format(base_fname, extension))
 
 
-def get_img_info(img_fname, s3_res=None, s3_bucket_name=None):
-    im = load_img(img_fname, s3_res, s3_bucket_name)
+def get_img_info(boss_res_params, img_fname, s3_res=None, s3_bucket_name=None):
+    im = load_img(boss_res_params, img_fname, s3_res, s3_bucket_name)
 
     width = im.width
     height = im.height
@@ -79,12 +85,12 @@ def get_img_info(img_fname, s3_res=None, s3_bucket_name=None):
     return (width, height, datatype)
 
 
-def load_img(img_fname, s3_res=None, s3_bucket_name=None, warn_missing_files=False):
+def load_img(boss_res_params, img_fname, s3_res=None, s3_bucket_name=None, warn_missing_files=False):
     if s3_res is None or s3_bucket_name is None:
         if not os.path.isfile(img_fname):
             msg = 'File not found: {}'.format(img_fname)
             if warn_missing_files:
-                send_msg(msg)
+                send_msg(boss_res_params, msg)
                 return None
             else:
                 raise IOError(msg)
@@ -97,61 +103,65 @@ def load_img(img_fname, s3_res=None, s3_bucket_name=None, warn_missing_files=Fal
         except Exception as e:
             msg = 'File not found: {}'.format(img_fname)
             if warn_missing_files:
-                send_msg(msg)
+                send_msg(boss_res_params, msg)
                 return None
             else:
                 raise IOError(msg)
     return im
 
 
-def read_img_stack(img_size, datatype, z_slices, base_fname, base_path, extension, s3_res, s3_bucket_name, z_rng, z_step, warn_missing_files=False):
-    send_msg('{} Reading image data (z range: {}:{})'.format(
+def read_img_stack(boss_res_params, z_slices, base_fname, base_path, extension, s3_res, s3_bucket_name, z_rng, z_step, warn_missing_files=False):
+    send_msg(boss_res_params, '{} Reading image data (z range: {}:{})'.format(
         get_formatted_datetime(), z_slices[0], z_slices[-1] + 1))
 
     im_array = np.zeros(
-        (len(z_slices), img_size[1], img_size[0]), dtype=datatype, order='C')
+        (len(z_slices), boss_res_params.img_size[1], boss_res_params.img_size[0]), dtype=boss_res_params.datatype, order='C')
     for idx, z_slice in enumerate(z_slices):
         img_fname = get_img_fname(
             base_fname, base_path, extension, z_slice, z_rng, z_step)
-        im = load_img(img_fname, s3_res, s3_bucket_name, warn_missing_files)
+        im = load_img(boss_res_params, img_fname, s3_res,
+                      s3_bucket_name, warn_missing_files)
         if im is None and warn_missing_files:
             continue
         im_array[idx, :, :] = np.array(im)
 
-    send_msg('{} Finished reading image data'.format(get_formatted_datetime()))
+    send_msg(boss_res_params, '{} Finished reading image data'.format(
+        get_formatted_datetime()))
     return im_array
 
 
-def post_cutout(rmt, coll_name, exp_name, channel_resource, resolution, st_x, sp_x, st_y, sp_y, st_z, sp_z, data, attempts=5, slack=None, slack_usr=None):
-    ch = channel_resource.name
+def post_cutout(boss_res_params, st_x, sp_x, st_y, sp_y, st_z, sp_z, data, attempts=5, slack=None, slack_usr=None):
+    ch = boss_res_params.ch_name
     cutout_msg = 'Coll: {}, Exp: {}, Ch: {}, x: {}, y: {}, z: {}'.format(
-        coll_name, exp_name, ch, (st_x, sp_x), (st_y, sp_y), (st_z, sp_z))
+        boss_res_params.coll_name, boss_res_params.exp_name, ch, (st_x, sp_x), (st_y, sp_y), (st_z, sp_z))
     # POST cutout
     for attempt in range(attempts - 1):
         try:
             start_time = time.time()
-            rmt.create_cutout(channel_resource, resolution,
-                              (st_x, sp_x), (st_y, sp_y), (st_z, sp_z), data)
+            boss_res_params.rmt.create_cutout(boss_res_params.ch_resource, boss_res_params.res,
+                                              (st_x, sp_x), (st_y, sp_y), (st_z, sp_z), data)
             end_time = time.time()
             post_time = end_time - start_time
-            msg = '{} POST succeeded in {:.2f} sec. '.format(
-                get_formatted_datetime(), post_time) + cutout_msg
-            send_msg(msg)
+            msg = '{} POST succeeded in {:.2f} sec. {}'.format(
+                get_formatted_datetime(), post_time, cutout_msg)
+            send_msg(boss_res_params, msg)
         except Exception as e:
             # attempt failed
-            send_msg(str(e))
+            send_msg(boss_res_params, str(e))
             if attempt != attempts - 1:
                 time.sleep(2**(attempt + 1))
         else:
             break
     else:
         # we failed all the attempts - deal with the consequences.
-        msg = '{} Error: data upload failed after multiple attempts, skipping. '.format(
-            get_formatted_datetime()) + cutout_msg
-        send_msg(msg, slack, slack_usr)
+        msg = '{} Error: data upload failed after multiple attempts, skipping. {}'.format(
+            get_formatted_datetime(), cutout_msg)
+        send_msg(boss_res_params, msg, slack, slack_usr)
+        return 1
+    return 0
 
 
-def download_rand_slice(rmt, channel_resource, resolution, im_array_local, rand_slice, slack, slack_usr):
+def download_rand_slice(boss_res_params, im_array_local, rand_slice, slack, slack_usr):
     im_array_boss = np.zeros(np.shape(im_array_local),
                              dtype=type(im_array_local[0, 0]))
 
@@ -169,13 +179,13 @@ def download_rand_slice(rmt, channel_resource, resolution, im_array_local, rand_
                 yi_stop = yM
             for attempt in range(attempts - 1):
                 try:
-                    im_array_boss[0, xi:xi_stop, yi:yi_stop] = rmt.get_cutout(
-                        channel_resource, resolution, [yi, yi_stop], [
+                    im_array_boss[0, xi:xi_stop, yi:yi_stop] = boss_res_params.rmt.get_cutout(
+                        boss_res_params.ch_resource, boss_res_params.res, [yi, yi_stop], [
                             xi, xi_stop], [rand_slice, rand_slice + 1]
                     )
                 except Exception as e:
                     # attempt failed
-                    send_msg(str(e))
+                    send_msg(boss_res_params, str(e))
                     if attempt != attempts - 1:
                         time.sleep(2**(attempt + 1))
                 else:
@@ -184,38 +194,39 @@ def download_rand_slice(rmt, channel_resource, resolution, im_array_local, rand_
                 # we failed all the attempts - deal with the consequences.
                 msg = '{} Error: download cutout failed after multiple attempts'.format(
                     get_formatted_datetime())
-                send_msg(msg, slack, slack_usr)
+                send_msg(boss_res_params, msg, slack, slack_usr)
     return im_array_boss
 
 
-def assert_equal(rmt, z_rng, channel_resource, resolution, img_size, datatype, base_fname, base_path, extension, s3_res, s3_bucket_name, z_step, slack, slack_usr):
-    send_msg('Checking to make sure data has been POSTed correctly')
+def assert_equal(boss_res_params, z_rng, base_fname, base_path, extension, s3_res, s3_bucket_name, z_step, slack, slack_usr):
+    send_msg(boss_res_params,
+             'Checking to make sure data has been POSTed correctly')
 
     # choose a rand slice:
     rand_slice = np.random.randint(z_rng[0], z_rng[1])
 
     # load source data (one z slice)
-    im_array_local = read_img_stack(img_size, datatype, [
-                                    rand_slice], base_fname, base_path, extension, s3_res, s3_bucket_name, z_rng, z_step, warn_missing_files=True)
+    im_array_local = read_img_stack(boss_res_params, [rand_slice], base_fname, base_path, extension, s3_res,
+                                    s3_bucket_name, z_rng, z_step, warn_missing_files=True)
 
     # load data from Boss
     msg = '{} Getting random z slice from BOSS for comparison'.format(
         get_formatted_datetime())
-    send_msg(msg)
+    send_msg(boss_res_params, msg)
 
     im_array_boss = download_rand_slice(
-        rmt, channel_resource, resolution, im_array_local, rand_slice, slack, slack_usr)
+        boss_res_params, im_array_local, rand_slice, slack, slack_usr)
 
     msg = '{} Z slice from BOSS downloaded'.format(
         get_formatted_datetime())
-    send_msg(msg)
+    send_msg(boss_res_params, msg)
 
     # assert that cutout from the boss is the same as what was sent
     if np.array_equal(im_array_boss, im_array_local):
-        send_msg('Test slice {} in Boss matches file {}'.format(
+        send_msg(boss_res_params, 'Test slice {} in Boss matches file {}'.format(
             rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng, z_step)))
     else:
-        send_msg('Test slice {} in Boss does *NOT* match file {}'.format(
+        send_msg(boss_res_params, 'Test slice {} in Boss does *NOT* match file {}'.format(
             rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng, z_step)),
             slack, slack_usr)
 
@@ -234,6 +245,24 @@ def get_supercube_zs(z_rng):
 
 def get_formatted_datetime():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def create_s3_res(boss_res_params, datasource, s3_bucket_name, aws_profile='default'):
+    # initiating the S3 resource:
+    if datasource == 's3':
+        if s3_bucket_name is None:
+            raise ValueError('s3 bucket not defined but s3 datasource chosen')
+        try:
+            s3_session = boto3.session.Session(profile_name=aws_profile)
+            s3_res = s3_session.resource('s3')
+        except ValueError:
+            raise ValueError('AWS credentials not set up?')
+    else:
+        if s3_bucket_name is not None:
+            send_msg(boss_res_params, 's3 bucket name input but source is local')
+        s3_res = None
+
+    return s3_res
 
 
 def main():
@@ -281,42 +310,39 @@ def main():
 
     args = parser.parse_args()
 
-    # initiating the S3 resource:
-    if args.datasource == 's3':
-        if args.s3_bucket_name is None:
-            raise ValueError('s3 bucket not defined but s3 datasource chosen')
-        try:
-            s3_session = boto3.session.Session(profile_name=args.aws_profile)
-            s3_res = s3_session.resource('s3')
-        except ValueError:
-            raise ValueError('AWS credentials not set up?')
-    else:
-        if args.s3_bucket_name is not None:
-            send_msg('s3 bucket name input but source is local')
-        s3_res = None
+    boss_res_params = BossResParams(args.collection, args.experiment, args.channel,
+                                    args.voxel_size, args.voxel_unit, args.datatype, args.res, args.img_size)
+
+    send_msg(boss_res_params, '{} Command parameters: {}'.format(
+        get_formatted_datetime(), vars(args)))
+
+    s3_res = create_s3_res(boss_res_params, args.datasource,
+                           args.s3_bucket_name, aws_profile=args.aws_profile)
 
     # extract img_size and datatype to check inputs
     first_fname = get_img_fname(
         args.base_filename, args.base_path, args.extension, args.z_range[0], args.z_range, args.z_step)
     im_width, im_height, im_datatype = get_img_info(
-        first_fname, s3_res, args.s3_bucket_name)
+        boss_res_params, first_fname, s3_res, args.s3_bucket_name)
     if args.img_size[0] != im_width or args.img_size[1] != im_height or args.datatype != im_datatype:
-        send_msg('Mismatch between image file and input parameters. Determined image width: {}, height: {}, datatype: {}'.format(
+        send_msg(boss_res_params, 'Mismatch between image file and input parameters. Determined image width: {}, height: {}, datatype: {}'.format(
             im_width, im_height, im_datatype))
         raise ValueError('Image attributes do not match arguments')
+
+    # creating the slack session
+    slack = create_slack_session(boss_res_params, args.slack_token_file)
 
     # create a session for the BOSS using intern
     rmt = BossRemote(args.boss_config_file)
 
-    # creating the slack session
-    slack = create_slack_session(args.slack_token_file)
-
     # create or get the boss resources for the data
-    coll, _, exp, ch = setup_boss_resources(
-        rmt, args.collection, args.experiment, args.channel, args.voxel_size, args.voxel_unit,
-        args.datatype, args.res, args.img_size)
-    send_msg('Resources set up. Collection: {}, Experiment: {}, Channel: {}'.format(
-        coll.name, exp.name, ch.name))
+    if args.create_resources:
+        get_only = False
+    else:
+        get_only = True
+    boss_res_params.setup_resources(rmt, get_only)
+    send_msg(boss_res_params, '{} Resources set up. Collection: {}, Experiment: {}, Channel: {}'.format(
+        get_formatted_datetime(), boss_res_params.coll_name, boss_res_params.exp_name, boss_res_params.ch_name))
 
     if args.create_resources:
         sys.exit(0)
@@ -327,7 +353,7 @@ def main():
     # load images files in stacks of 16 at a time into numpy array
     for _, z_slices in z_buckets.items():
         # read images into numpy array
-        im_array = read_img_stack(args.img_size, args.datatype, z_slices, args.base_filename,
+        im_array = read_img_stack(boss_res_params, z_slices, args.base_filename,
                                   args.base_path, args.extension, s3_res, args.s3_bucket_name,
                                   args.z_range, args.z_step, args.warn_missing_files)
 
@@ -345,20 +371,19 @@ def main():
                 data = np.asarray(data, order='C')
 
                 # POST each block to the BOSS
-                post_cutout(rmt, coll.name, exp.name, ch, args.res, st_x, sp_x, st_y, sp_y,
-                            z_slices[0], z_slices[-1] + 1,
-                            data, attempts=3)
+                post_cutout(boss_res_params, st_x, sp_x, st_y, sp_y,
+                            z_slices[0], z_slices[-1] + 1, data, attempts=3)
 
     # checking data posted correctly
-    assert_equal(rmt, args.z_range, ch, args.res, args.img_size, args.datatype, args.base_filename, args.base_path,
+    assert_equal(boss_res_params, args.z_range, args.base_filename, args.base_path,
                  args.extension, s3_res, args.s3_bucket_name, args.z_step, slack, args.slack_usr)
 
     ch_link = (
         'http://ben-dev.neurodata.io/channel_detail/{}/{}/{}/').format(args.collection, args.experiment, args.channel)
 
-    send_msg('{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\nView properties of channel and start downsample job on ndwebtools: {}'.format(
-        get_formatted_datetime(), args.z_range, coll.name, exp.name, ch.name, ch_link
-    ), slack, args.slack_usr)
+    send_msg(boss_res_params,
+             '{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\nView properties of channel and start downsample job on ndwebtools: {}'.format(
+                 get_formatted_datetime(), args.z_range, boss_res_params.coll_name, boss_res_params.exp_name, boss_res_params.ch_name, ch_link), slack, args.slack_usr)
 
 
 if __name__ == '__main__':

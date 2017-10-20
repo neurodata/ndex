@@ -1,6 +1,7 @@
 -e git://github.com/jhuapl-boss/intern.git#egg=intern
-slacker>=0.9.50
-boto3>=1.4.6
+slacker>=0.9.60
+boto3>=1.4.7
 tailer>=0.4.1
-numpy>=1.13.1
-Pillow>=4.2.1
+numpy>=1.13.3
+Pillow>=4.3.0
+tqdm>=4.19.2
