@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import os
 import shlex
+from subprocess import list2cmdline
 
 """ Script to generate ingest commands for ingest program """
 """ Once generated, copy commands to terminal and run them """
@@ -67,8 +69,12 @@ workers = 6
 
 def gen_comm(zstart, zend):
     cmd = "python " + script + " "
-    cmd += ' --base_path ' + shlex.quote(data_directory)
-    cmd += ' --base_filename ' + shlex.quote(file_name)
+    if os.name == 'nt':
+        cmd += ' --base_path ' + list2cmdline([data_directory])
+        cmd += ' --base_filename ' + list2cmdline([file_name])
+    else:
+        cmd += ' --base_path ' + shlex.quote(data_directory)
+        cmd += ' --base_filename ' + shlex.quote(file_name)
     cmd += ' --extension ' + file_format
     cmd += ' --datasource ' + source_type
     cmd += ' --collection ' + collection
