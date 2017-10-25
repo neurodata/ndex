@@ -96,7 +96,6 @@ def gen_comm(zstart, zend):
     if source_type == 's3':
         cmd += " --s3_bucket_name " + s3_bucket_name
         cmd += ' --aws_profile ' + aws_profile
-    cmd += " &"
 
     return cmd
 
@@ -143,4 +142,5 @@ for worker in range(workers):
     end_z = min(zrange[1], next_z)
 
     cmd = gen_comm(start_z, end_z)
+    cmd += " &"
     print(cmd)
