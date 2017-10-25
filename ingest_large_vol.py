@@ -18,6 +18,17 @@ from intern.remote.boss import BossRemote
 Image.MAX_IMAGE_PIXELS = None
 
 
+def read_channel_names(channels_path):
+    try:
+        channels = []
+        with open(channels_path, 'r') as f:
+            for line in f:
+                channels.append(line.strip('\n'))
+        return channels
+    except FileNotFoundError as e:
+        raise FileNotFoundError
+
+
 def create_slack_session(boss_res_params, slack_token_file):
     # generate token here: https://api.slack.com/custom-integrations/legacy-tokens, put in file in same directory -> "slack_token"
     try:
@@ -51,11 +62,10 @@ def send_msg(boss_res_params, msg, slack=None, slack_usr=None):
                            title=get_formatted_datetime() + '_tail_of_log')
 
 
-def get_img_fname(base_fname, base_path, extension, z_index, z_rng, z_step):
+def get_img_fname(base_fname, base_path, extension, z_index, z_rng, z_step, channel):
     if z_index >= z_rng[1]:
         raise IndexError("Z-index out of range")
 
-    # return glob.glob(img_path)
     matches = re.findall('<(p:\d+)?>', base_fname)
     for m in matches:
         if m:
@@ -64,6 +74,16 @@ def get_img_fname(base_fname, base_path, extension, z_index, z_rng, z_step):
         else:
             z_str = str(z_index * z_step)
         base_fname = base_fname.replace("<{}>".format(m), z_str)
+
+    # replace <ch> in filename with channel.name
+    matches = re.findall('<(ch)>', base_fname)
+    for m in matches:
+        base_fname = base_fname.replace("<{}>".format(m), channel)
+
+    # replace <ch> in filename with channel.name
+    matches = re.findall('<(ch)>', base_path)
+    for m in matches:
+        base_path = base_path.replace("<{}>".format(m), channel)
 
     # prepend root, append extension
     return os.path.join(base_path, "{}.{}".format(base_fname, extension))
@@ -118,7 +138,7 @@ def read_img_stack(boss_res_params, z_slices, base_fname, base_path, extension, 
         (len(z_slices), boss_res_params.img_size[1], boss_res_params.img_size[0]), dtype=boss_res_params.datatype, order='C')
     for idx, z_slice in enumerate(z_slices):
         img_fname = get_img_fname(
-            base_fname, base_path, extension, z_slice, z_rng, z_step)
+            base_fname, base_path, extension, z_slice, z_rng, z_step, boss_res_params.ch_name)
         im = load_img(boss_res_params, img_fname, s3_res,
                       s3_bucket_name, warn_missing_files)
         if im is None and warn_missing_files:
@@ -224,10 +244,10 @@ def assert_equal(boss_res_params, z_rng, base_fname, base_path, extension, s3_re
     # assert that cutout from the boss is the same as what was sent
     if np.array_equal(im_array_boss, im_array_local):
         send_msg(boss_res_params, 'Test slice {} in Boss matches file {}'.format(
-            rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng, z_step)))
+            rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng, z_step, boss_res_params.ch_name)))
     else:
         send_msg(boss_res_params, 'Test slice {} in Boss does *NOT* match file {}'.format(
-            rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng, z_step)),
+            rand_slice, get_img_fname(base_fname, base_path, extension, rand_slice, z_rng, z_step, boss_res_params.ch_name)),
             slack, slack_usr)
 
 
@@ -265,52 +285,8 @@ def create_s3_res(boss_res_params, datasource, s3_bucket_name, aws_profile='defa
     return s3_res
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description='Copy image z stacks to Boss for a single channel')
-
-    parser.add_argument('--base_path', type=str,
-                        help='Directory where image stacks are located (e.g. "/data/images/"')
-    parser.add_argument('--base_filename', type=str,
-                        help='Base filename with z values specified "ch1_<>" or w/ leading zeros "ch1_<p:4>"')
-    parser.add_argument('--extension', type=str, help='Extension (tif(f)/png)')
-    parser.add_argument('--datasource', type=str, default='local',
-                        help='Location of files, either "local" or "s3"')
-    parser.add_argument('--collection', type=str, help='Collection')
-    parser.add_argument('--experiment', type=str, help='Experiment')
-    parser.add_argument('--channel', type=str, help='Channel')
-    parser.add_argument('--voxel_size', type=float,
-                        nargs=3, help='Voxel size in x y z')
-    parser.add_argument('--voxel_unit', type=str,
-                        help='Voxel unit, nanometers/micrometers/millimeters/centimeters')
-    parser.add_argument('--datatype', type=str,
-                        help='Data type (uint8/uint16)')
-    parser.add_argument('--img_size', type=int, nargs=3,
-                        help='Volume extent in x (width) y (height) and z (slices/images)')
-    parser.add_argument('--z_range', type=int, nargs=2,
-                        help='Z slices to ingest: start (inclusive) end (exclusive)')
-    parser.add_argument('--res', type=int, default=0,
-                        help='Resolution to copy (default = 0)')
-    parser.add_argument('--warn_missing_files', action='store_true',
-                        help='Warn on missing files instead of failing')
-    parser.add_argument('--slack_usr', type=str, default=None,
-                        help='User to send slack message to (e.g. USERNAME)')
-    parser.add_argument('--s3_bucket_name', type=str,
-                        default=None, help='S3 bucket name')
-    parser.add_argument('--boss_config_file', type=str, default='neurodata.cfg',
-                        help='Path and filename for Boss config (config file w/ server and API Key)')
-    parser.add_argument('--slack_token_file', type=str, default='slack_token',
-                        help='Path & filename for slack token (key only)')
-    parser.add_argument('--z_step', type=int, default=1,
-                        help='Z step size for input files, default 1 (on Boss, z step is always 1, and z_rng and img_size for z should both assume increments of 1)')
-    parser.add_argument('--create_resources', action='store_true',
-                        help='Creates the boss resources and exits')
-    parser.add_argument('--aws_profile', type=str, default='default',
-                        help='Name of profile in .aws/credentials file (default = default)')
-
-    args = parser.parse_args()
-
-    boss_res_params = BossResParams(args.collection, args.experiment, args.channel,
+def per_channel_ingest(args, channel):
+    boss_res_params = BossResParams(args.collection, args.experiment, channel,
                                     args.voxel_size, args.voxel_unit, args.datatype, args.res, args.img_size)
 
     send_msg(boss_res_params, '{} Command parameters: {}'.format(
@@ -321,7 +297,7 @@ def main():
 
     # extract img_size and datatype to check inputs
     first_fname = get_img_fname(
-        args.base_filename, args.base_path, args.extension, args.z_range[0], args.z_range, args.z_step)
+        args.base_filename, args.base_path, args.extension, args.z_range[0], args.z_range, args.z_step, boss_res_params.ch_name)
     im_width, im_height, im_datatype = get_img_info(
         boss_res_params, first_fname, s3_res, args.s3_bucket_name)
     if args.img_size[0] != im_width or args.img_size[1] != im_height or args.datatype != im_datatype:
@@ -345,7 +321,7 @@ def main():
         get_formatted_datetime(), boss_res_params.coll_name, boss_res_params.exp_name, boss_res_params.ch_name))
 
     if args.create_resources:
-        sys.exit(0)
+        return 0
 
     stride_x = 1024
     stride_y = 1024
@@ -384,6 +360,66 @@ def main():
     send_msg(boss_res_params,
              '{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\nView properties of channel and start downsample job on ndwebtools: {}'.format(
                  get_formatted_datetime(), args.z_range, boss_res_params.coll_name, boss_res_params.exp_name, boss_res_params.ch_name, ch_link), slack, args.slack_usr)
+
+    return 0
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Copy image z stacks to Boss for a single channel')
+
+    parser.add_argument('--base_path', type=str,
+                        help='Directory where image stacks are located (e.g. "/data/images/"')
+    parser.add_argument('--base_filename', type=str,
+                        help='Base filename with z values specified "ch1_<>" or w/ leading zeros "ch1_<p:4>"')
+    parser.add_argument('--extension', type=str, help='Extension (tif(f)/png)')
+    parser.add_argument('--datasource', type=str, default='local',
+                        help='Location of files, either "local" or "s3"')
+    parser.add_argument('--collection', type=str, help='Collection')
+    parser.add_argument('--experiment', type=str, help='Experiment')
+    parser.add_argument('--channel', type=str, default=None, help='Channel')
+    parser.add_argument('--channels_list_file', type=str, default=None,
+                        help='Path to a file with list of channels separated into separate lines')
+    parser.add_argument('--voxel_size', type=float,
+                        nargs=3, help='Voxel size in x y z')
+    parser.add_argument('--voxel_unit', type=str,
+                        help='Voxel unit, nanometers/micrometers/millimeters/centimeters')
+    parser.add_argument('--datatype', type=str,
+                        help='Data type (uint8/uint16)')
+    parser.add_argument('--img_size', type=int, nargs=3,
+                        help='Volume extent in x (width) y (height) and z (slices/images)')
+    parser.add_argument('--z_range', type=int, nargs=2,
+                        help='Z slices to ingest: start (inclusive) end (exclusive)')
+    parser.add_argument('--res', type=int, default=0,
+                        help='Resolution to copy (default = 0)')
+    parser.add_argument('--warn_missing_files', action='store_true',
+                        help='Warn on missing files instead of failing')
+    parser.add_argument('--slack_usr', type=str, default=None,
+                        help='User to send slack message to (e.g. USERNAME)')
+    parser.add_argument('--s3_bucket_name', type=str,
+                        default=None, help='S3 bucket name')
+    parser.add_argument('--boss_config_file', type=str, default='neurodata.cfg',
+                        help='Path and filename for Boss config (config file w/ server and API Key)')
+    parser.add_argument('--slack_token_file', type=str, default='slack_token',
+                        help='Path & filename for slack token (key only)')
+    parser.add_argument('--z_step', type=int, default=1,
+                        help='Z step size for input files, default 1 (on Boss, z step is always 1, and z_rng and img_size for z should both assume increments of 1)')
+    parser.add_argument('--create_resources', action='store_true',
+                        help='Creates the boss resources and exits')
+    parser.add_argument('--aws_profile', type=str, default='default',
+                        help='Name of profile in .aws/credentials file (default = default)')
+
+    args = parser.parse_args()
+
+    # Iterate through channels if channels path specified
+    if args.channels_list_file is not None:
+        channels = read_channel_names(args.channels_list_file)
+    else:
+        channels = [args.channel]
+
+    for channel in channels:
+        result = per_channel_ingest(args, channel)
+        assert result == 0
 
 
 if __name__ == '__main__':

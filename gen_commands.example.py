@@ -27,14 +27,22 @@ slack_username = "SLACKUSER"  # your slack username
 # boss metadata
 collection = 'COLL'
 experiment = 'EXP'
+
+# either specify the channel name or specify a file path that contains the channels to iterate over
 channel = 'Ch1'
+# channel = None
+
+# channels_list_file = 'channels.txt'
+channels_list_file = None
 
 # data_directory _with_ trailing slash (doesn't output correct paths on Windows)
-data_directory = "DATA_DIR/"
+# <ch> indicates where the program will insert the channel name for paths when iterating over multiple channels
+data_directory = "DATA_DIR/<ch>/"
 
 # filename without extension (no '.tif')
-# <p:4> indicates the z index of the tif file, with up to 4 leading zeros
-file_name = "FILENAME<p:4>"
+# <p:4> indicates the z index of the tif file, with up to N leading zeros (4 in this example)
+# indicates where the program will insert the channel name for file names when iterating over multiple channels
+file_name = "FILENAME<ch>-<p:4>"
 
 # extension name for images, supported image types are PNG and TIFF
 # extension just needs to match the filename and can be any string (e.g.: ome, tif, png)
@@ -61,7 +69,7 @@ zrange = [0, ZZZZ]
 
 # Number of workers to use
 # each worker loads additional 16 image files so watch out for out of memory errors
-workers = 6
+workers = 4
 
 
 """ Code to generate the commands """
@@ -79,7 +87,10 @@ def gen_comm(zstart, zend):
     cmd += ' --datasource ' + source_type
     cmd += ' --collection ' + collection
     cmd += ' --experiment ' + experiment
-    cmd += ' --channel ' + channel
+    if channel is not None:
+        cmd += ' --channel ' + channel
+    else:
+        cmd += ' --channels_list_file ' + channels_list_file
     cmd += ' --voxel_size ' + voxel_size
     cmd += ' --voxel_unit ' + voxel_unit
     cmd += ' --datatype ' + data_type
