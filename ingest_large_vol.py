@@ -1,5 +1,6 @@
 import argparse
 import os
+import platform
 import re
 import sys
 import time
@@ -410,6 +411,12 @@ def main():
                         help='Name of profile in .aws/credentials file (default = default)')
 
     args = parser.parse_args()
+
+    # if not 64 bit python raise an error
+    assert platform.architecture()[0] == '64bit'
+
+    # if not python 3.5 or greater, raise an error
+    assert sys.version_info >= (3, 5)
 
     # Iterate through channels if channels path specified
     if args.channels_list_file is not None:
