@@ -71,13 +71,51 @@ class TestBossResources(unittest.TestCase):
         voxel_unit = 'nanometers'
         datatype = 'uint16'
         res = 0
-        img_size = [2000, 1000, 100]
+        img_size = [1000, 1024, 100]
 
         boss_res_params = BossResParams(
             coll_name, exp_name, ch_name, voxel_size=voxel_size, voxel_unit=voxel_unit, datatype=datatype, res=res, img_size=img_size)
+        boss_res_params.setup_resources(self.rmt, get_only=True)
+        boss_ch_res = self.rmt.get_channel(ch_name, coll_name, exp_name)
+        self.assertEqual(boss_ch_res.name, boss_res_params.ch_resource.name)
+        self.assertEqual(boss_res_params.img_size, img_size)
+
+    def test_create_boss_res_wrong_img_size(self):
+        coll_name = 'ben_dev'
+        exp_name = 'dev_ingest_4'
+        ch_name = 'def_files'
+
+        voxel_size = [1, 1, 1]
+        voxel_unit = 'nanometers'
+        datatype = 'uint16'
+        res = 0
+        img_size = [2000, 1000, 50]
+
+        boss_res_params = BossResParams(
+            coll_name, exp_name, ch_name, voxel_size=voxel_size, voxel_unit=voxel_unit, datatype=datatype, res=res, img_size=img_size)
+        boss_res_params.setup_resources(self.rmt, get_only=True)
+        self.assertNotEqual(boss_res_params.img_size, img_size)
+
+    def test_create_boss_annotation_channel(self):
+        coll_name = 'ben_dev'
+        exp_name = 'dev_ingest_4'
+        ch_name = 'def_files_annotation'
+        source = 'def_files'
+
+        voxel_size = [1, 1, 1]
+        voxel_unit = 'micrometers'
+        datatype = 'uint64'
+        res = 0
+        img_size = [1000, 1024, 100]
+
+        boss_res_params = BossResParams(
+            coll_name, exp_name, ch_name, voxel_size=voxel_size, voxel_unit=voxel_unit, datatype=datatype, res=res, img_size=img_size, source=source)
         boss_res_params.setup_resources(self.rmt, get_only=False)
         boss_ch_res = self.rmt.get_channel(ch_name, coll_name, exp_name)
         self.assertEqual(boss_ch_res.name, boss_res_params.ch_resource.name)
+        self.assertEqual(boss_res_params.img_size, img_size)
+        self.assertEqual(boss_ch_res.datatype, datatype)
+        self.assertEqual(boss_ch_res.type, 'annotation')
 
 
 if __name__ == '__main__':

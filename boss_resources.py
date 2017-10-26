@@ -7,7 +7,7 @@ from intern.resource.boss.resource import *
 
 
 class BossResParams():
-    def __init__(self, coll_name, exp_name, ch_name, voxel_size=None, voxel_unit=None, datatype=None, res=None, img_size=None):
+    def __init__(self, coll_name, exp_name, ch_name, voxel_size=None, voxel_unit=None, datatype=None, res=None, img_size=None, source=None):
         coord_frame_name = coll_name + '_' + exp_name
 
         self.coll_name = coll_name
@@ -17,6 +17,12 @@ class BossResParams():
         self.voxel_size = voxel_size
         self.voxel_unit = voxel_unit
         self.datatype = datatype
+        if datatype == 'uint64':
+            self.type = 'annotation'
+            self.source = source
+        else:
+            self.type = 'image'
+            self.source = None
         self.res = res
         self.img_size = img_size
 
@@ -27,16 +33,16 @@ class BossResParams():
         self.coord_frame_resource = self.setup_boss_coord_frame(
             get_only=get_only)
         self.exp_resource = self.setup_boss_experiment(get_only=get_only)
-        self.ch_resource = self.setup_boss_channel(get_only=get_only)
+        self.ch_resource = self.setup_boss_channel(
+            get_only=get_only, ch_type=self.type, source=self.source)
 
-        if get_only:
-            self.voxel_size = [self.coord_frame_resource.x_voxel_size,
-                               self.coord_frame_resource.y_voxel_size, self.coord_frame_resource.z_voxel_size]
-            self.voxel_unit = self.coord_frame_resource.voxel_unit
-            self.datatype = self.ch_resource.datatype
-            self.res = self.ch_resource.base_resolution
-            self.img_size = [self.coord_frame_resource.x_stop,
-                             self.coord_frame_resource.y_stop, self.coord_frame_resource.z_stop]
+        self.voxel_size = [self.coord_frame_resource.x_voxel_size,
+                           self.coord_frame_resource.y_voxel_size, self.coord_frame_resource.z_voxel_size]
+        self.voxel_unit = self.coord_frame_resource.voxel_unit
+        self.datatype = self.ch_resource.datatype
+        self.res = self.ch_resource.base_resolution
+        self.img_size = [self.coord_frame_resource.x_stop,
+                         self.coord_frame_resource.y_stop, self.coord_frame_resource.z_stop]
 
     def get_boss_project(self, proj_setup, get_only):
         try:
@@ -87,13 +93,17 @@ class BossResParams():
                                            num_hierarchy_levels, hierarchy_method)
         return self.get_boss_project(exp_setup, get_only)
 
-    def setup_boss_channel(self, ch_type='image', ch_description='', get_only=True):
+    def setup_boss_channel(self, ch_type='image', ch_description='', get_only=True, source=None):
         if get_only and self.datatype is None:
             ch_setup = ChannelResource(
                 self.ch_name, self.coll_name, self.exp_name)
         else:
-            ch_setup = ChannelResource(
-                self.ch_name, self.coll_name, self.exp_name, ch_type, ch_description, 0, self.datatype, self.res)
+            if source is None:
+                ch_setup = ChannelResource(
+                    self.ch_name, self.coll_name, self.exp_name, ch_type, ch_description, 0, self.datatype, self.res)
+            else:
+                ch_setup = ChannelResource(
+                    self.ch_name, self.coll_name, self.exp_name, ch_type, ch_description, 0, self.datatype, self.res, sources=[source])
         return self.get_boss_project(ch_setup, get_only)
 
 

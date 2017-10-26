@@ -12,7 +12,7 @@ import tifffile as tiff
 from ingest_large_vol import *
 
 
-class IngestLargeVolTest(unittest.TestCase):
+class TestIngestLargeVol(unittest.TestCase):
 
     def setUp(self):
         self.startTime = time.time()
@@ -22,11 +22,13 @@ class IngestLargeVolTest(unittest.TestCase):
         coll_name = 'ben_dev'
         exp_name = 'dev_ingest_4'
         ch_name = 'def_files'
-        self.boss_res_params = BossResParams(coll_name, exp_name, ch_name)
 
         self.x_size = 1000
         self.y_size = 1024
         self.dtype = 'uint16'
+
+        self.boss_res_params = BossResParams(
+            coll_name, exp_name, ch_name, datatype=self.dtype)
 
         self.z = 0
         self.z_rng = [0, 16]
@@ -56,6 +58,21 @@ class IngestLargeVolTest(unittest.TestCase):
         img_fname_test = '{}img_{:04d}.tif'.format(self.data_directory, self.z)
         self.assertEqual(img_fname, img_fname_test)
 
+    def test_get_img_info_uint8_tif(self):
+        file_format = 'tif'
+        dtype = 'uint8'
+
+        img_fname = get_img_fname(
+            self.fileprefix, self.data_directory, file_format, self.z, self.z_rng, self.z_step, self.boss_res_params.ch_name)
+        create_img_file(self.x_size, self.y_size,
+                        dtype, file_format, img_fname)
+
+        im_width, im_height, im_datatype = get_img_info(
+            self.boss_res_params, img_fname)
+        self.assertEqual(im_width, self.x_size)
+        self.assertEqual(im_height, self.y_size)
+        self.assertEqual(im_datatype, dtype)
+
     def test_get_img_info_uint16_tif(self):
         file_format = 'tif'
 
@@ -84,6 +101,21 @@ class IngestLargeVolTest(unittest.TestCase):
         self.assertEqual(im_height, self.y_size)
         self.assertEqual(im_datatype, self.dtype)
 
+    def test_get_img_info_uint64_tif(self):
+        file_format = 'tif'
+        dtype = 'uint64'
+
+        img_fname = get_img_fname(
+            self.fileprefix, self.data_directory, file_format, self.z, self.z_rng, self.z_step, self.boss_res_params.ch_name)
+        create_img_file(self.x_size, self.y_size,
+                        dtype, file_format, img_fname)
+
+        im_width, im_height, im_datatype = get_img_info(
+            self.boss_res_params, img_fname)
+        self.assertEqual(im_width, self.x_size)
+        self.assertEqual(im_height, self.y_size)
+        self.assertEqual(im_datatype, dtype)
+
     def test_read_uint16_img_stack(self):
 
         # generate some images
@@ -107,11 +139,45 @@ class IngestLargeVolTest(unittest.TestCase):
             im = Image.open(img_fname)
             self.assertTrue(np.array_equal(im_array[z, :, :], im))
 
+    def test_post_uint64_cutout(self):
+        x_size = 128
+        y_size = 128
+        dtype = 'uint64'
+        bit_width = int(''.join(filter(str.isdigit, dtype)))
+
+        # generate a block of data
+        # data = np.random.randint(
+        #     1, 2**bit_width, size=(self.z_rng[1], y_size, x_size), dtype=dtype)
+        data = np.zeros((self.z_rng[1], y_size, x_size), dtype=dtype) + \
+            np.random.randint(1, 2**bit_width, dtype=dtype)
+
+        # post (non-zero) data to boss
+        st_x, sp_x, st_y, sp_y, st_z, sp_z = (
+            0, x_size, 0, y_size, 0, self.z_rng[1])
+
+        coll_name = 'ben_dev'
+        exp_name = 'dev_ingest_4'
+        ch_name = 'def_files_annotation'
+        boss_res_params = BossResParams(coll_name, exp_name, ch_name, voxel_size=[
+                                        1, 1, 1], voxel_unit='micrometers', datatype=dtype, res=0, img_size=[1000, 1024, 100], source='def_files')
+        boss_res_params.setup_resources(self.rmt, get_only=False)
+        ret_val = post_cutout(boss_res_params, st_x, sp_x, st_y, sp_y,
+                              st_z, sp_z, data, attempts=2, slack=None, slack_usr=None)
+
+        self.assertEqual(ret_val, 0)
+
+        # read data out of boss
+        data_boss = self.rmt.get_cutout(boss_res_params.ch_resource, 0,
+                                        [0, x_size], [0, y_size], self.z_rng)
+
+        # assert they are the same
+        self.assertTrue(np.array_equal(data_boss, data))
+
     def test_post_uint16_cutout(self):
         x_size = 128
         y_size = 128
-        bit_width = 8
         dtype = 'uint16'
+        bit_width = int(''.join(filter(str.isdigit, dtype)))
 
         # generate a block of data
         data = np.random.randint(
@@ -123,7 +189,7 @@ class IngestLargeVolTest(unittest.TestCase):
 
         self.boss_res_params.setup_resources(self.rmt)
         ret_val = post_cutout(self.boss_res_params, st_x, sp_x, st_y, sp_y,
-                              st_z, sp_z, data, attempts=5, slack=None, slack_usr=None)
+                              st_z, sp_z, data, attempts=2, slack=None, slack_usr=None)
 
         self.assertEqual(ret_val, 0)
 
@@ -138,7 +204,7 @@ class IngestLargeVolTest(unittest.TestCase):
         channels_path = 'channels.example.txt'
         channels = read_channel_names(channels_path)
 
-        valid_channels = ['Channel1', 'Channel2', 'Channel0']
+        valid_channels = ['Channel1', 'Channel0']
         self.assertEqual(valid_channels, channels)
 
     def test_read_channel_names_no_channel_file(self):
@@ -178,7 +244,8 @@ class IngestLargeVolTest(unittest.TestCase):
                          voxel_unit='micrometers',
                          warn_missing_files=True,
                          z_range=[0, 16],
-                         z_step=1)
+                         z_step=1,
+                         source_channel=None)
 
         channels = read_channel_names(args.channels_list_file)
         print(channels)
@@ -187,7 +254,7 @@ class IngestLargeVolTest(unittest.TestCase):
             gen_images(self.z_rng[1], self.x_size, self.y_size,
                        args.datatype, args.extension, args.base_filename, args.base_path, channel=channel)
             results.append(per_channel_ingest(args, channel))
-        self.assertEqual([0, 0, 0], results)
+        self.assertEqual([0] * len(channels), results)
 
         results = []
         args.create_resources = False
@@ -195,7 +262,7 @@ class IngestLargeVolTest(unittest.TestCase):
             gen_images(self.z_rng[1], self.x_size, self.y_size,
                        args.datatype, args.extension, args.base_filename, args.base_path, channel=channel)
             results.append(per_channel_ingest(args, channel))
-        self.assertEqual([0, 0, 0], results)
+        self.assertEqual([0] * len(channels), results)
 
 
 def create_img_file(x_size, y_size, dtype, file_format, img_fname):

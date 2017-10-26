@@ -10,6 +10,7 @@ from datetime import datetime
 import boto3
 import numpy as np
 import tailer
+import tifffile
 from PIL import Image
 from slacker import Slacker
 
@@ -93,20 +94,14 @@ def get_img_fname(base_fname, base_path, extension, z_index, z_rng, z_step, chan
 def get_img_info(boss_res_params, img_fname, s3_res=None, s3_bucket_name=None):
     im = load_img(boss_res_params, img_fname, s3_res, s3_bucket_name)
 
-    width = im.width
-    height = im.height
-    im_mode = im.tile[0][3]
-    if isinstance(im_mode, (tuple)):  # tiff files
-        im_mode = im_mode[0]
-    im_dtype = im_mode[0:4]
-    if im_dtype == 'I;16':
-        datatype = 'uint16'
-    elif im_dtype == 'L':
-        datatype = 'uint8'
+    width = im.shape[1]
+    height = im.shape[0]
+    datatype = im.dtype
     return (width, height, datatype)
 
 
 def load_img(boss_res_params, img_fname, s3_res=None, s3_bucket_name=None, warn_missing_files=False):
+    _, extension = os.path.splitext(img_fname)
     if s3_res is None or s3_bucket_name is None:
         if not os.path.isfile(img_fname):
             msg = 'File not found: {}'.format(img_fname)
@@ -115,12 +110,12 @@ def load_img(boss_res_params, img_fname, s3_res=None, s3_bucket_name=None, warn_
                 return None
             else:
                 raise IOError(msg)
-        im = Image.open(img_fname)
+        im_obj = img_fname
     else:
         # download the file from s3
         try:
             obj = s3_res.Object(s3_bucket_name, img_fname)
-            im = Image.open(obj.get()['Body'])
+            im_obj = obj.get()['Body']
         except Exception as e:
             msg = 'File not found: {}'.format(img_fname)
             if warn_missing_files:
@@ -128,7 +123,19 @@ def load_img(boss_res_params, img_fname, s3_res=None, s3_bucket_name=None, warn_
                 return None
             else:
                 raise IOError(msg)
-    return im
+    try:
+        if extension.lower() == '.png':
+            im = np.array(Image.open(im_obj), dtype=boss_res_params.datatype)
+        else:
+            im = tifffile.imread(im_obj)
+        return im
+    except Exception as e:
+        msg = 'File not found: {}'.format(img_fname)
+        if warn_missing_files:
+            send_msg(boss_res_params, msg)
+            return None
+        else:
+            raise IOError(msg)
 
 
 def read_img_stack(boss_res_params, z_slices, base_fname, base_path, extension, s3_res, s3_bucket_name, z_rng, z_step, warn_missing_files=False):
@@ -144,7 +151,7 @@ def read_img_stack(boss_res_params, z_slices, base_fname, base_path, extension, 
                       s3_bucket_name, warn_missing_files)
         if im is None and warn_missing_files:
             continue
-        im_array[idx, :, :] = np.array(im)
+        im_array[idx, :, :] = im
 
     send_msg(boss_res_params, '{} Finished reading image data'.format(
         get_formatted_datetime()))
@@ -288,7 +295,7 @@ def create_s3_res(boss_res_params, datasource, s3_bucket_name, aws_profile='defa
 
 def per_channel_ingest(args, channel):
     boss_res_params = BossResParams(args.collection, args.experiment, channel,
-                                    args.voxel_size, args.voxel_unit, args.datatype, args.res, args.img_size)
+                                    args.voxel_size, args.voxel_unit, args.datatype, args.res, args.img_size, source=args.source_channel)
 
     send_msg(boss_res_params, '{} Command parameters: {}'.format(
         get_formatted_datetime(), vars(args)))
@@ -386,7 +393,9 @@ def main():
     parser.add_argument('--voxel_unit', type=str,
                         help='Voxel unit, nanometers/micrometers/millimeters/centimeters')
     parser.add_argument('--datatype', type=str,
-                        help='Data type (uint8/uint16)')
+                        help='Data type (uint8/uint16/[uint64-annotations])')
+    parser.add_argument('--source_channel', type=str, default=None,
+                        help='Name of reference channel for annotation channels')
     parser.add_argument('--img_size', type=int, nargs=3,
                         help='Volume extent in x (width) y (height) and z (slices/images)')
     parser.add_argument('--z_range', type=int, nargs=2,

@@ -60,6 +60,10 @@ voxel_unit = 'micrometers'
 # uint8 or uint16 for image channels, uint64 for annotations
 data_type = 'uint16'
 
+# name of the reference channel (in the same experiment) for the annotation channel(s)
+# set to None for image data
+source = None
+
 # pixel extent for images in x, y and number of total z slices
 data_dimensions = "XXXX YYYY ZZZZ"
 
@@ -94,6 +98,8 @@ def gen_comm(zstart, zend):
     cmd += ' --voxel_size ' + voxel_size
     cmd += ' --voxel_unit ' + voxel_unit
     cmd += ' --datatype ' + data_type
+    if source is not None:
+        cmd += ' --source ' + source
     cmd += ' --img_size ' + data_dimensions
     cmd += ' --z_range %d %d ' % (zstart, zend)
     cmd += ' --z_step ' + z_step

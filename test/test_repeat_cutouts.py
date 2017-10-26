@@ -8,7 +8,7 @@ from PIL import Image
 from repeat_cutouts import *
 
 
-class RepeatCutoutsTest(unittest.TestCase):
+class TestRepeatCutouts(unittest.TestCase):
 
     def setUp(self):
         self.startTime = time.time()

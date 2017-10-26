@@ -4,7 +4,7 @@ import unittest
 from parse_log import *
 
 
-class ParseLogTest(unittest.TestCase):
+class TestParseLog(unittest.TestCase):
 
     def setUp(self):
         self.startTime = time.time()

@@ -5,3 +5,4 @@ tailer>=0.4.1
 numpy>=1.13.3
 Pillow>=4.3.0
 tqdm>=4.19.2
+tifffile>=0.12.1
