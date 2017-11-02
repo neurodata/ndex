@@ -140,8 +140,10 @@ class TestIngestLargeVol(unittest.TestCase):
         create_img_file(self.x_size, self.y_size,
                         dtype, file_format, img_fname)
 
+        boss_res_params = self.boss_res_params
+        boss_res_params.datatype = dtype
         im_width, im_height, im_datatype = get_img_info(
-            self.boss_res_params, img_fname)
+            boss_res_params, img_fname)
         self.assertEqual(im_width, self.x_size)
         self.assertEqual(im_height, self.y_size)
         self.assertEqual(im_datatype, dtype)
@@ -278,12 +280,12 @@ class TestIngestLargeVol(unittest.TestCase):
                          source_channel=None)
 
         channels = read_channel_names(args.channels_list_file)
-        ingest_per_channel(args, channel)
+        self.ingest_per_channel(args, channels)
 
         args.create_resources = False
-        ingest_per_channel(args, channel)
+        self.ingest_per_channel(args, channels)
 
-    def ingest_per_channel(self, args, channel):
+    def ingest_per_channel(self, args, channels):
         for channel in channels:
             gen_images(self.z_rng[1], self.x_size, self.y_size,
                        args.datatype, args.extension, args.base_filename, args.base_path, channel=channel)

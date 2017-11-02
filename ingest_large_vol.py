@@ -127,9 +127,17 @@ def load_img(boss_res_params, img_fname, s3_res=None, s3_bucket_name=None, warn_
     try:
         if extension.lower() == '.png':
             im = np.array(Image.open(im_obj), dtype=boss_res_params.datatype)
+        elif boss_res_params.datatype == 'uint8' or boss_res_params.datatype == 'uint16':
+            im = np.array(Image.open(im_obj))
         else:
             im = tifffile.imread(im_obj)
         return im
+    except OSError:
+        msg = 'Problem opening file: {}'.format(img_fname)
+        if warn_missing_files:
+            send_msg(boss_res_params, msg)
+            return None
+        raise OSError(msg)
     except Exception as e:
         msg = 'File not found: {}'.format(img_fname)
         if warn_missing_files:
