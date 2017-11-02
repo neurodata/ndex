@@ -1,3 +1,4 @@
+import math
 import os
 import re
 import time
@@ -5,6 +6,7 @@ import unittest
 from argparse import Namespace
 from datetime import datetime
 
+import boto3
 import numpy as np
 import png
 import tifffile as tiff
@@ -86,6 +88,34 @@ class TestIngestLargeVol(unittest.TestCase):
         self.assertEqual(im_width, self.x_size)
         self.assertEqual(im_height, self.y_size)
         self.assertEqual(im_datatype, self.dtype)
+
+    def test_get_img_info_uint16_tif_s3(self):
+        file_format = 'tif'
+        bucket_name = 'benfalk-dev'
+
+        # create an image
+        img_fname = get_img_fname(self.fileprefix, self.data_directory, file_format,
+                                  self.z, self.z_rng, self.z_step, self.boss_res_params.ch_name)
+        create_img_file(self.x_size, self.y_size,
+                        self.dtype, file_format, img_fname)
+
+        # put the image on a bucket
+        s3 = boto3.resource('s3')
+        data = open(img_fname, 'rb')
+        s3_fname = 'tests/' + img_fname
+        s3.Bucket(bucket_name).put_object(Key=s3_fname, Body=data)
+
+        # get info on that image
+        im_width, im_height, im_datatype = get_img_info(
+            self.boss_res_params, s3_fname, s3_res=s3, s3_bucket_name=bucket_name)
+
+        # assert the info is correct
+        self.assertEqual(im_width, self.x_size)
+        self.assertEqual(im_height, self.y_size)
+        self.assertEqual(im_datatype, self.dtype)
+
+        # closing the boto3 session
+        s3.meta.client._endpoint.http_session.close()
 
     def test_get_img_info_uint16_png(self):
         file_format = 'png'
@@ -248,26 +278,62 @@ class TestIngestLargeVol(unittest.TestCase):
                          source_channel=None)
 
         channels = read_channel_names(args.channels_list_file)
-        print(channels)
-        results = []
-        for channel in channels:
-            gen_images(self.z_rng[1], self.x_size, self.y_size,
-                       args.datatype, args.extension, args.base_filename, args.base_path, channel=channel)
-            results.append(per_channel_ingest(args, channel))
-        self.assertEqual([0] * len(channels), results)
+        ingest_per_channel(args, channel)
 
-        results = []
         args.create_resources = False
+        ingest_per_channel(args, channel)
+
+    def ingest_per_channel(self, args, channel):
         for channel in channels:
             gen_images(self.z_rng[1], self.x_size, self.y_size,
                        args.datatype, args.extension, args.base_filename, args.base_path, channel=channel)
-            results.append(per_channel_ingest(args, channel))
-        self.assertEqual([0] * len(channels), results)
+            result = per_channel_ingest(args, channel)
+            self.assertEqual(result, 0)
+
+    def test_ingest_uint8_annotations(self):
+        args = Namespace(base_filename='img_annotation_<p:4>',
+                         base_path='local_img_test_data\\',
+                         boss_config_file='neurodata.cfg',
+                         channel='def_files_annotation',
+                         channels_list_file=None,
+                         collection='ben_dev',
+                         create_resources=True,
+                         datasource='local',
+                         datatype='uint8',
+                         experiment='dev_ingest_4',
+                         extension='tif',
+                         img_size=[1000, 1024, 100],
+                         res=0,
+                         s3_bucket_name=None,
+                         slack_token_file='slack_token',
+                         slack_usr=None,
+                         voxel_size=[1.0, 1.0, 1.0],
+                         voxel_unit='micrometers',
+                         warn_missing_files=True,
+                         z_range=[0, 16],
+                         z_step=1,
+                         source_channel='dev_ingest_4')
+
+        file_format = 'tif'
+        file_prefix = 'img_annotation_<p:4>'
+        dtype = 'uint8'
+        gen_images(self.z_rng[1], self.x_size, self.y_size,
+                   dtype, file_format, file_prefix, self.data_directory, intensity_range=30)
+
+        channel = args.channel
+        result = per_channel_ingest(args, channel)
+        self.assertEqual(0, result)
+
+        args.create_resources = False
+        result = per_channel_ingest(args, channel)
+        self.assertEqual(0, result)
 
 
-def create_img_file(x_size, y_size, dtype, file_format, img_fname):
-
-    bit_width = int(''.join(filter(str.isdigit, dtype)))
+def create_img_file(x_size, y_size, dtype, file_format, img_fname, intensity_range=None):
+    if intensity_range is None:
+        bit_width = int(''.join(filter(str.isdigit, dtype)))
+    else:
+        bit_width = round(math.log(intensity_range, 2))
     ar = np.random.randint(
         1, 2**bit_width, size=(y_size, x_size), dtype=dtype)
 
@@ -284,11 +350,12 @@ def create_img_file(x_size, y_size, dtype, file_format, img_fname):
             writer.write(f, ar.tolist())
 
 
-def gen_images(n_images, x_size, y_size, dtype, file_format, fileprefix, directory, z_step=1, channel='Ch1'):
+def gen_images(n_images, x_size, y_size, dtype, file_format, fileprefix, directory, z_step=1, channel='Ch1', intensity_range=None):
     for z in range(0, n_images * z_step, z_step):
         img_fname = get_img_fname(
             fileprefix, directory, file_format, z, [0, n_images], z_step, channel)
-        create_img_file(x_size, y_size, dtype, file_format, img_fname)
+        create_img_file(x_size, y_size, dtype, file_format,
+                        img_fname, intensity_range)
 
 
 if __name__ == '__main__':

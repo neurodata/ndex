@@ -1,4 +1,5 @@
 import argparse
+import io
 import os
 import platform
 import re
@@ -115,7 +116,7 @@ def load_img(boss_res_params, img_fname, s3_res=None, s3_bucket_name=None, warn_
         # download the file from s3
         try:
             obj = s3_res.Object(s3_bucket_name, img_fname)
-            im_obj = obj.get()['Body']
+            im_obj = io.BytesIO(obj.get()['Body'].read())
         except Exception as e:
             msg = 'File not found: {}'.format(img_fname)
             if warn_missing_files:
@@ -294,14 +295,20 @@ def create_s3_res(boss_res_params, datasource, s3_bucket_name, aws_profile='defa
 
 
 def per_channel_ingest(args, channel):
+    boss_datatype = args.datatype
+    if args.source_channel is not None:
+        boss_datatype = 'uint64'
     boss_res_params = BossResParams(args.collection, args.experiment, channel,
-                                    args.voxel_size, args.voxel_unit, args.datatype, args.res, args.img_size, source=args.source_channel)
+                                    args.voxel_size, args.voxel_unit, boss_datatype, args.res, args.img_size, source=args.source_channel)
 
     send_msg(boss_res_params, '{} Command parameters: {}'.format(
         get_formatted_datetime(), vars(args)))
 
-    s3_res = create_s3_res(boss_res_params, args.datasource,
-                           args.s3_bucket_name, aws_profile=args.aws_profile)
+    if args.datasource == 's3':
+        s3_res = create_s3_res(boss_res_params, args.datasource,
+                               args.s3_bucket_name, aws_profile=args.aws_profile)
+    else:
+        s3_res = None
 
     # extract img_size and datatype to check inputs
     first_fname = get_img_fname(

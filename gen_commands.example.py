@@ -60,8 +60,9 @@ voxel_unit = 'micrometers'
 # uint8 or uint16 for image channels, uint64 for annotations
 data_type = 'uint16'
 
-# name of the reference channel (in the same experiment) for the annotation channel(s)
+# name of the reference channel (in the same experiment) for an annotation channel(s)
 # set to None for image data
+# if set to any other value other than None, uploaded data will be treated as 'annotation' type
 source = None
 
 # pixel extent for images in x, y and number of total z slices
