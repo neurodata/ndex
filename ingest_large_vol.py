@@ -378,7 +378,7 @@ def per_channel_ingest(args, channel):
                  args.extension, s3_res, args.s3_bucket_name, args.z_step, slack, args.slack_usr)
 
     ch_link = (
-        'http://ben-dev.neurodata.io/channel_detail/{}/{}/{}/').format(args.collection, args.experiment, args.channel)
+        'http://ndwt.neurodata.io/channel_detail/{}/{}/{}/').format(args.collection, args.experiment, boss_res_params.ch_name)
 
     send_msg(boss_res_params,
              '{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\nView properties of channel and start downsample job on ndwebtools: {}'.format(
