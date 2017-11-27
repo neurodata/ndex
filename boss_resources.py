@@ -107,6 +107,6 @@ class BossResParams():
         return self.get_boss_project(ch_setup, get_only)
 
 
-def calc_hierarchy_levels(img_size, lowest_res=64):
-    max_xy = max(img_size[0:1])
-    return math.ceil(math.log(max_xy / lowest_res, 2))
+def calc_hierarchy_levels(img_size, lowest_res=512):
+    min_xy = min(img_size[0:1])
+    return math.ceil(math.log(min_xy / lowest_res, 2))
