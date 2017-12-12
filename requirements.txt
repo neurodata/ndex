@@ -1,8 +1,10 @@
 -e git://github.com/jhuapl-boss/intern.git#egg=intern
 slacker>=0.9.60
-boto3>=1.4.7
+boto3>=1.4.8
 tailer>=0.4.1
 numpy>=1.13.3
 Pillow>=4.3.0
-tqdm>=4.19.2
+tqdm>=4.19.5
 tifffile>=0.12.1
+pytest>=3.3.1
+pypng>=0.0.18

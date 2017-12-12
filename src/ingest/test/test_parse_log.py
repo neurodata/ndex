@@ -1,17 +1,12 @@
+import os
 import time
-import unittest
 
-from parse_log import *
+import pytest
+
+from ....parse_log import *
 
 
-class TestParseLog(unittest.TestCase):
-
-    def setUp(self):
-        self.startTime = time.time()
-
-    def tearDown(self):
-        t = time.time() - self.startTime
-        print('{:03.1f}s: {}'.format(t, self.id()))
+class TestParseLog:
 
     def test_parse_log(self):
         log_data = '''Resources set up. Collection: ben_dev, Experiment: dev_ingest_2, Channel: def_files
@@ -28,7 +23,6 @@ Create cutout failed on Ch0, got HTTP response: (400) - {"message": "Error durin
 '''
 
         logfile = 'log_test.txt'
-
         with open(logfile, 'w') as f:
             f.write(log_data)
 
@@ -36,14 +30,12 @@ Create cutout failed on Ch0, got HTTP response: (400) - {"message": "Error durin
 
         # parse the log file to generate the repeat_cutouts file
         repeatfile = parse_log(logfile, repeatfile)
-
         with open(repeatfile, 'r') as f:
             repeatdata = f.readlines()
 
         repeatdata_valid = 'Coll: ben_dev, Exp: dev_ingest_2, Ch: def_files, x: (0, 512), y: (1536, 2048), z: (0, 16)\n'
-
         assert repeatdata == [repeatdata_valid]
 
-
-if __name__ == '__main__':
-    unittest.main()
+        # cleanup
+        os.remove(repeatfile)
+        os.remove(logfile)

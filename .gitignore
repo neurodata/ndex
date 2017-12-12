@@ -100,7 +100,7 @@ ENV/
 # mypy
 .mypy_cache/
 
-/src
+/src/intern
 log.txt
 .vscode/
 neurodata.cfg

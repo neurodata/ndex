@@ -1,16 +1,22 @@
 import argparse
-import os
 import re
+from argparse import Namespace
 
 import numpy as np
 
-from boss_resources import BossResParams
-from ingest_large_vol import create_s3_res, post_cutout, read_img_stack
-from intern.remote.boss import BossRemote
-from parse_log import parse_log
+try:
+    from src.ingest.boss_resources import BossResParams
+    from src.ingest.ingest_job import IngestJob
+    from ingest_large_vol import post_cutout
+    from parse_log import parse_log
+except ImportError:
+    from .src.ingest.boss_resources import BossResParams
+    from .src.ingest.ingest_job import IngestJob
+    from .ingest_large_vol import post_cutout
+    from .parse_log import parse_log
 
 
-class Cutout():
+class Cutout:
     def __init__(self, coll, exp, ch, x, y, z):
         self.collection = coll
         self.experiment = exp
@@ -43,15 +49,6 @@ class ImgData():
         self.x = np.shape(im_array)[2]
 
 
-class IngestJob():
-    def __init__(self, **kwargs):
-        # source_type, s3_bucket_name, aws_profile, boss_config_file, data_directory, file_name_pattern, img_format, z_step
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-        self.rmt = BossRemote(self.boss_config_file)
-
-
 def parse_cut_line(c_line):
     coll = re.search('Coll: (.+?),', c_line).group(1)
     exp = re.search('Exp: (.+?),', c_line).group(1)
@@ -66,16 +63,16 @@ def parse_cut_line(c_line):
 def gather_info():
     s = input('Source type (either "local" or "s3"): ')
     if 'local' == s or 's3' == s:
-        source_type = s
+        datasource = s
     else:
         raise TypeError
 
-    if source_type == 's3':
+    if datasource == 's3':
         s = input('s3 bucket name: ')
-        s3_bucket_name = s  # not used for 'local' source_type
+        s3_bucket_name = s  # not used for 'local' datasource
 
         s = input('aws profile ("default"): ') or 'default'
-        aws_profile = s  # not used for 'local' source_type
+        aws_profile = s  # not used for 'local' datasource
     else:
         s3_bucket_name = None
         aws_profile = None
@@ -101,30 +98,25 @@ def gather_info():
     s = input('Z step size ("1"): ') or '1'
     z_step = int(s)
 
-    ingestjob = IngestJob(source_type=source_type, s3_bucket_name=s3_bucket_name, aws_profile=aws_profile, boss_config_file=boss_config_file,
-                          data_directory=data_directory, file_name_pattern=file_name_pattern, img_format=img_format, z_step=z_step)
-    return ingestjob
+    return Namespace(datasource=datasource,
+                     s3_bucket_name=s3_bucket_name,
+                     aws_profile=aws_profile,
+                     base_filename=file_name_pattern,
+                     base_path=data_directory,
+                     extension=img_format,
+                     z_step=z_step,
+                     boss_config_file=boss_config_file,
+                     warn_missing_files=True
+                     )
 
 
-def ingest_cuts(cutouts, ingestjob):
-    coll, exp, ch = (cutouts[-1].collection,
-                     cutouts[-1].experiment, cutouts[-1].channel)
-
-    # going to try to get these things from the resources that already exist on the boss:
-    boss_res_params = BossResParams(coll, exp, ch)
-    boss_res_params.setup_resources(ingestjob.rmt, get_only=True)
-
-    if ingestjob.source_type is 's3':
-        s3_res = create_s3_res(
-            boss_res_params, ingestjob.source_type, ingestjob.s3_bucket_name, ingestjob.aws_profile)
-    else:
-        s3_res = None
+def ingest_cuts(cutouts, ingest_job, boss_res_params):
+    coll = ingest_job.coll_name
+    exp = ingest_job.exp_name
+    ch = ingest_job.ch_name
 
     # sort by z, y, x...
     cutouts.sort(key=lambda c: (c.z, c.y, c.x))
-
-    z_extent = [boss_res_params.coord_frame_resource.z_start,
-                boss_res_params.coord_frame_resource.z_stop]
 
     imgdata = None
     for cut in cutouts:
@@ -135,14 +127,13 @@ def ingest_cuts(cutouts, ingestjob):
         # load the data
         if imgdata is None or imgdata.z_rng != cut.z:
             z_slices = range(cut.z[0], cut.z[1])
-            im_array = read_img_stack(boss_res_params, z_slices, ingestjob.file_name_pattern, ingestjob.data_directory,
-                                      ingestjob.img_format, s3_res, ingestjob.s3_bucket_name, z_extent, ingestjob.z_step, warn_missing_files=True)
+            im_array = ingest_job.read_img_stack(z_slices)
             imgdata = ImgData(im_array, cut.z)
 
         data = imgdata.im_data[:, cut.y[0]:cut.y[1], cut.x[0]:cut.x[1]]
         data = np.asarray(data, order='C')
-        ret_val = post_cutout(boss_res_params, cut.x[0], cut.x[1], cut.y[0],
-                              cut.y[1], cut.z[0], cut.z[1], data, attempts=2)
+        ret_val = post_cutout(boss_res_params, ingest_job, cut.x,
+                              cut.y, cut.z, data, attempts=2)
         if ret_val == 0:
             cut.send_msg(
                 'Successful re-ingest of cutout: {}'.format(cut.cutout_string()))
@@ -185,8 +176,17 @@ def iterate_posting_cutouts(cutouts):
                     msg = 'Repeating cutouts for collection {}, experiment {}, channel {}'.format(
                         coll, exp, ch)
                     cus_ch[-1].send_msg(msg)
-                    ingestjob = gather_info()
-                    ingest_cuts(cus_ch, ingestjob)
+
+                    args = gather_info()
+                    args.collection = coll
+                    args.experiment = exp
+                    args.channel = ch
+
+                    ingest_job = IngestJob(args)
+                    # we get these things from the resources that already exist on the boss:
+                    boss_res_params = BossResParams(ingest_job, get_only=True)
+
+                    ingest_cuts(cus_ch, ingest_job, boss_res_params)
 
 
 def main():
