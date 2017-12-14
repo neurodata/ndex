@@ -141,4 +141,6 @@ class BossResParams:
 
 def calc_hierarchy_levels(img_size, lowest_res=512):
     min_xy = min(img_size[0:1])
-    return math.ceil(math.log(min_xy / lowest_res, 2))
+    # we add one because 0 is included in the number of downsampling levels
+    num_levels = math.ceil(math.log(min_xy / lowest_res, 2)) + 1
+    return num_levels
