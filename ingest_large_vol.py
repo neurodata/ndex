@@ -152,21 +152,25 @@ def get_formatted_datetime():
 
 
 def per_channel_ingest(args, channel):
+    args.channel = channel
     ingest_job = IngestJob(args)
 
     # extract img_size and datatype to check inputs (by actually reading the data)
     # this can take a while, as we actually load in the first image slice,
     # so we should store this first slice so we don't have to load it again when we later read the entire chunk in z
-    im_width, im_height, im_datatype = ingest_job.get_img_info(
-        ingest_job.z_range[0])
+    # we don't do this for render data source because we get the image size and attributes from the render metadata and the # of bits aren't in the metadata or render
+    if ingest_job.datasource != 'render':
+        im_width, im_height, im_datatype = ingest_job.get_img_info(
+            ingest_job.z_range[0])
 
-    # we do this before creating boss resources that could be inaccurate
-    try:
-        assert ingest_job.img_size[0] == im_width and ingest_job.img_size[1] == im_height and ingest_job.datatype == im_datatype
-    except AssertionError:
-        ingest_job.send_msg('Mismatch between image file and input parameters. Determined image width: {}, height: {}, datatype: {}'.format(
-            im_width, im_height, im_datatype))
-        raise ValueError('Image attributes do not match arguments')
+        # we do this before creating boss resources that could be inaccurate
+        try:
+            assert ingest_job.img_size[0] == im_width and ingest_job.img_size[
+                1] == im_height and ingest_job.datatype == im_datatype
+        except AssertionError:
+            ingest_job.send_msg('Mismatch between image file and input parameters. Determined image width: {}, height: {}, datatype: {}'.format(
+                im_width, im_height, im_datatype))
+            raise ValueError('Image attributes do not match arguments')
 
     # create or get the boss resources for the data
     get_only = not ingest_job.create_resources
@@ -289,6 +293,8 @@ def main():
                         help='Name of project in render')
     parser.add_argument('--render_stack', type=str,
                         help='Name of stack in render')
+    parser.add_argument('--render_channel', type=str,
+                        help='Name of channel in render (some stacks don''t have channels so this would not be entered)')
     parser.add_argument('--render_baseURL', type=str,
                         help='Base URL for render instance (https://render-dev-eric.neurodata.io/render-ws/v1/)')
     parser.add_argument('--render_scale', type=float,

@@ -64,6 +64,7 @@ class IngestJob:
             render_owner = args.get('render_owner')
             render_project = args.get('render_project')
             render_stack = args.get('render_stack')
+            render_channel = args.get('render_channel')
             render_baseURL = args.get('render_baseURL')
 
             render_scale = args.get('render_scale')
@@ -71,7 +72,7 @@ class IngestJob:
 
             # create the render object in order to get the xyz extents
             self.render_obj = renderResource(
-                render_owner, render_project, render_stack, render_baseURL, scale=render_scale)
+                render_owner, render_project, render_stack, render_baseURL, channel=render_channel, scale=render_scale)
             self.x_extent = self.render_obj.x_rng
             self.y_extent = self.render_obj.y_rng
             self.z_extent = self.render_obj.z_rng
@@ -112,7 +113,7 @@ class IngestJob:
         self.boss_config_file = args.get('boss_config_file')
 
         # Document the arguments passed
-        self.send_msg('{} Command parameters: {}'.format(
+        self.send_msg('{} Command parameters used: {}'.format(
             get_formatted_datetime(), args))
 
     def create_slack_session(self, slack_token_file):
@@ -208,7 +209,7 @@ class IngestJob:
         if not os.path.isfile(img_fname):
             msg = 'File not found: {}'.format(img_fname)
 
-            self.send_msg(msg, send_slack=(not self.warn_missing_files))
+            self.send_msg(msg, send_slack=True)
             if self.warn_missing_files:
                 return None
             else:
@@ -226,7 +227,7 @@ class IngestJob:
                 if attempt != attempts - 1:
                     time.sleep(2**(attempt + 1))
 
-        self.send_msg(msg, send_slack=(not self.warn_missing_files))
+        self.send_msg(msg, send_slack=True)
         if self.warn_missing_files:
             return None
         else:
@@ -276,14 +277,14 @@ class IngestJob:
 
         except OSError:
             msg = 'Problem opening file: {}'.format(img_fname)
-            self.send_msg(msg, (not self.warn_missing_files))
+            self.send_msg(msg, send_slack=True)
             if self.warn_missing_files:
                 return None
             raise OSError(msg)
 
         except Exception as err:
             msg = 'Unknown error {}: {}'.format(err, img_fname)
-            self.send_msg(msg, (not self.warn_missing_files))
+            self.send_msg(msg, send_slack=True)
             if self.warn_missing_files:
                 return None
             raise IOError(msg)

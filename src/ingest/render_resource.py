@@ -25,7 +25,7 @@ from PIL import Image
 
 
 class renderResource:
-    def __init__(self, owner, project, stack, baseURL, scale=None):
+    def __init__(self, owner, project, stack, baseURL, channel=None, scale=None):
         self.owner = owner
         self.project = project
         self.stack = stack
@@ -40,7 +40,18 @@ class renderResource:
 
         self.set_metadata()
 
+        if channel:
+            assert channel in self.channel_names
+
+        # defaults to None
+        self.channel = channel
+
+    def __str__(self):
+        from pprint import pformat
+        return "<" + type(self).__name__ + "> " + pformat(vars(self), indent=4, width=1)
+
     def set_metadata(self):
+        # even if you have a channel the metadata is located at the stack level
         metaURL = '{}owner/{}/project/{}/stack/{}'.format(
             self.baseURL, self.owner, self.project, self.stack)
         r = self.session.get(metaURL, timeout=10)
@@ -67,18 +78,40 @@ class renderResource:
         self.tile_width = round(stats['maxTileWidth'])
         self.tile_height = round(stats['maxTileHeight'])
 
-    def get_render_tile(self, z, x, y, x_width, y_width, window=None, attempts=5):
-        # note that this returns data at scaled resolution, from box coords of unscaled res
+        channels = stats['channelNames']
+        self.channel_names = channels
+
+    def gen_render_url(self, z, x, y, x_width, y_width, window=None):
+        # using the box cutout
+
+        # this gives you the data at certain levels of downsampling (0 = full res, 1 = half, etc)
+        # row and column are the number of rows/colums in the data with the specified width/height
+        # GET /v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.png
 
         # GET /v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image
-        imgURL = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image'.format(
+        img_URL = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image'.format(
             self.baseURL, self.owner, self.project, self.stack, z, x, y, x_width, y_width, self.scale)
+
+        params = []
+        if self.channel is not None:
+            params.append('channel={}'.format(self.channel))
+
         if window is not None:
-            imgURL += '?minIntesnity={}&maxIntensity={}'.format(
-                window[0], window[1])
+            params.append('minIntensity={}&maxIntensity={}'.format(
+                window[0], window[1]))
+
+        if params:
+            img_URL += '?' + '&'.join(params)
+
+        return img_URL
+
+    def get_render_tile(self, z, x, y, x_width, y_width, window=None, attempts=5):
+        # note that this returns data at scaled resolution, from box coords of unscaled res
+        img_URL = self.gen_render_url(z, x, y, x_width, y_width, window=window)
+
         for attempt in range(attempts):
             try:
-                r = self.session.get(imgURL, timeout=10)
+                r = self.session.get(img_URL, timeout=10)
                 if r.status_code != 200:
                     raise ConnectionError(
                         'Data not fetched with error: {}'.format(r.reason))
@@ -100,12 +133,11 @@ class renderResource:
 
         # we'll break apart our request into a series of tiles
         # these will extend past the extent of the underlying data
-        stride_width = 2048
-        stride_height = 2048
+        stride = round(1024 / self.scale)
         x_buckets = get_supercubes(
-            self.x_rng_unscaled, stride=stride_width)
+            self.x_rng_unscaled, stride=stride)
         y_buckets = get_supercubes(
-            self.y_rng_unscaled, stride=stride_height)
+            self.y_rng_unscaled, stride=stride)
 
         # assembling the args for each of our separate requests
         # requests are set at the unscaled full size resolution
@@ -113,7 +145,7 @@ class renderResource:
         for _, x in x_buckets.items():
             for _, y in y_buckets.items():
                 args.append(
-                    (z, x[0], y[0], stride_width, stride_height, window))
+                    (z, x[0], y[0], stride, stride, window))
 
         # firing off the requests
         pool = ThreadPool(threads)
@@ -121,22 +153,22 @@ class renderResource:
             data_array = pool.starmap(self.get_render_tile, args)
 
         # initialize to the size of the return data (scaled if necessary)
-        im_array = np.zeros([stride_height * len(y_buckets),
-                             stride_width * len(x_buckets)], dtype=dtype)
+        im_array = np.zeros([stride * len(y_buckets),
+                             stride * len(x_buckets)], dtype=dtype)
 
         # assembling the data
         for idx, data in enumerate(data_array):
             _, x, y, x_width, y_width, _ = args[idx]
             # have to scale the box to fit the data inside
-            x, y = [
+            x_s, y_s = [
                 round(a * self.scale) for a in [x, y]]
             y_width, x_width = data.shape
-            im_array[y - self.y_rng[0]:y - self.y_rng[0] + y_width,
-                     x - self.x_rng[0]: x - self.x_rng[0] + x_width] = data
+            im_array[y_s - self.y_rng[0]:y_s - self.y_rng[0] + y_width,
+                     x_s - self.x_rng[0]:x_s - self.x_rng[0] + x_width] = data
 
         # we finally clip the data to the bounds of the scaled data (while dealing with offsets)
-        im_array = im_array[self.y_rng[0] - self.y_rng[0]:self.y_rng[1] - self.y_rng[0],
-                            self.x_rng[0] - self.x_rng[0]:self.x_rng[1] - self.x_rng[0]]
+        im_array = im_array[0:self.y_rng[1] - self.y_rng[0],
+                            0:self.x_rng[1] - self.x_rng[0]]
         return im_array
 
 

@@ -22,8 +22,10 @@ aws_profile = "default"
 render_owner = 'OWNER_NAME'
 render_project = 'PROJECT_NAME'
 render_stack = 'STACK_NAME'
+render_channel = 'CHANNEL_NAME'  # can be None if no channels in the stack
 render_baseURL = 'BASEURL'
-render_scale = 1  # 1 is full resolution, .5 is downsampled in half. None is scale = 1
+# 1 is full resolution, .5 is downsampled in half. None is scale = 1. Powers of 2 (e.g. .5, .25, .125)
+render_scale = 1
 render_window = '0 10000'  # set to None no windowing will be applied for 16bit to 8bit
 
 
@@ -48,13 +50,12 @@ channel = 'Ch1'
 channels_list_file = None
 
 # data_directory _with_ trailing slash
-# set to None for render source_type
-# <ch> indicates where the program will insert the channel name for paths when iterating over multiple channels
+# <ch> (if needed) indicates where the program will insert the channel name for paths when iterating over multiple channels
+# can be ignored for 'render' data source
 data_directory = "DATA_DIR/<ch>/"
 # data_directory = None
 
 # filename without extension (no '.tif')
-# set to None for render source_type
 # <p:4> indicates the z index of the tif file, with up to N leading zeros (4 in this example)
 # <ch> indicates where the program will insert the channel name for file names when iterating over multiple channels (optional)
 # can be ignored for 'render' data source
@@ -87,6 +88,7 @@ data_type = 'uint16'
 reference_channel = None
 
 # pixel -/+ extent (integers) for images in x (width), y (height) and z (slices)
+# comment out for render
 x_extent = [0, X]
 y_extent = [0, Y]
 z_extent = [0, Z]
@@ -96,12 +98,15 @@ offset_extents = False
 
 # first inclusive, last _exclusive_ list of sections to ingest for _this_ job (can be negative)
 # typically the same as Z "extent"
+# note: for render, to use this, you have to specify the x/y/z extents (above)
 zrange = [0, Z]
-# if it's a render source, we (optionally) can get the full z range from the metadata (forces single worker)
+# if it's a render data source, we (optionally) get the entire z range from the metadata
+# (forces single worker)
 # zrange = None
 
 # Number of workers to use
 # each worker loads additional 16 image files so watch out for out of memory errors
+# ignored if zrange is None
 workers = 4
 
 
@@ -141,6 +146,8 @@ def gen_comm(zstart, zend):
         cmd += ' --render_scale {}'.format(render_scale)
         if render_window is not None:
             cmd += ' --render_window {}'.format(render_window)
+        if render_channel is not None:
+            cmd += ' --render_channel {}'.format(render_channel)
 
     cmd += ' --collection {}'.format(collection)
     cmd += ' --experiment {}'.format(experiment)
