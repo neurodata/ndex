@@ -176,12 +176,14 @@ def per_channel_ingest(args, channel):
     get_only = not ingest_job.create_resources
     boss_res_params = BossResParams(ingest_job, get_only)
 
-    ingest_job.send_msg('{} Resources set up. Collection: {}, Experiment: {}, Channel: {}'.format(
-        get_formatted_datetime(), ingest_job.coll_name, ingest_job.exp_name, ingest_job.ch_name))
-
     # we just create the resources, don't do anything else
     if ingest_job.create_resources:
+        ingest_job.send_msg('{} Resources set up. Collection: {}, Experiment: {}, Channel: {}'.format(
+            get_formatted_datetime(), ingest_job.coll_name, ingest_job.exp_name, ingest_job.ch_name))
         return 0
+    else:
+        ingest_job.send_msg('{} Starting ingest for Collection: {}, Experiment: {}, Channel: {}, Z: {z[0]},{z[1]}'.format(
+            get_formatted_datetime(), ingest_job.coll_name, ingest_job.exp_name, ingest_job.ch_name, z=ingest_job.z_range))
 
     # we begin the ingest here:
     stride_x = 1024

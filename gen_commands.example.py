@@ -88,9 +88,11 @@ data_type = 'uint16'
 reference_channel = None
 
 # pixel -/+ extent (integers) for images in x (width), y (height) and z (slices)
-# comment out for render
+# not used for render, comment out
 x_extent = [0, X]
 y_extent = [0, Y]
+
+# optional for render (used w/ mult. workers)
 z_extent = [0, Z]
 
 # if any of the extents are negative, they need to be offset to >= 0 for the boss
@@ -98,7 +100,7 @@ offset_extents = False
 
 # first inclusive, last _exclusive_ list of sections to ingest for _this_ job (can be negative)
 # typically the same as Z "extent"
-# note: for render, to use this, you have to specify the x/y/z extents (above)
+# optional for render (used w/ mult. workers), requires z_extent (above)
 zrange = [0, Z]
 # if it's a render data source, we (optionally) get the entire z range from the metadata
 # (forces single worker)
@@ -126,10 +128,19 @@ def gen_comm(zstart, zend):
         cmd += ' --extension {}'.format(file_format)
         cmd += ' --x_extent {d[0]} {d[1]}'.format(d=x_extent)
         cmd += ' --y_extent {d[0]} {d[1]}'.format(d=y_extent)
-        cmd += ' --z_extent {d[0]} {d[1]}'.format(d=z_extent)
-        cmd += ' --z_range %d %d ' % (zstart, zend)
         cmd += ' --z_step {}'.format(z_step)
         cmd += ' --warn_missing_files'
+
+    try:
+        if z_extent and zstart and zend:
+            cmd += ' --z_extent {d[0]} {d[1]}'.format(d=z_extent)
+            cmd += ' --z_range %d %d ' % (zstart, zend)
+    except NameError:
+        # getting this directly from render
+        if source_type == 'render':
+            pass
+        else:
+            raise NameError
 
     if offset_extents:
         cmd += ' --offset_extents'
@@ -180,20 +191,29 @@ if zrange:
 
     print("# Range per worker (rounded up): ", range_per_worker)
 
-    # amount of memory per worker
-    ddim_xy = [x_extent[1] - x_extent[0], y_extent[1] - y_extent[0]]
-    if data_type == 'uint8':
-        mult = 1
-    elif data_type == 'uint16':
-        mult = 2
-    elif data_type == 'uint64':
-        mult = 8
-    mem_per_w = ddim_xy[0] * ddim_xy[1] * mult * 16 / 1024 / 1024 / 1024
-    print('# Expected memory usage per worker {:.1f} GB'.format(mem_per_w))
+    try:
+        if x_extent:
+            # amount of memory per worker
+            ddim_xy = [x_extent[1] - x_extent[0], y_extent[1] - y_extent[0]]
+            if data_type == 'uint8':
+                mult = 1
+            elif data_type == 'uint16':
+                mult = 2
+            elif data_type == 'uint64':
+                mult = 8
+            mem_per_w = ddim_xy[0] * ddim_xy[1] * \
+                mult * 16 / 1024 / 1024 / 1024
+            print(
+                '# Expected memory usage per worker {:.1f} GB'.format(mem_per_w))
 
-    # amount of memory total
-    mem_tot = mem_per_w * workers
-    print('# Expected total memory usage: {:.1f} GB'.format(mem_tot))
+            # amount of memory total
+            mem_tot = mem_per_w * workers
+            print('# Expected total memory usage: {:.1f} GB'.format(mem_tot))
+    except NameError:
+        if source_type == 'render':
+            pass
+        else:
+            raise NameError
 
     cmd = gen_comm(zrange[0], zrange[1])
     cmd += ' --create_resources'

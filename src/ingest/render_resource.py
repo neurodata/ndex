@@ -105,17 +105,17 @@ class renderResource:
 
         return img_URL
 
-    def get_render_tile(self, z, x, y, x_width, y_width, window=None, attempts=5):
+    def get_render_tile(self, z, x, y, x_width, y_width, window=None, attempts=6):
         # note that this returns data at scaled resolution, from box coords of unscaled res
         img_URL = self.gen_render_url(z, x, y, x_width, y_width, window=window)
 
         for attempt in range(attempts):
             try:
-                r = self.session.get(img_URL, timeout=10)
+                r = self.session.get(img_URL, timeout=60)
                 if r.status_code != 200:
                     raise ConnectionError(
                         'Data not fetched with error: {}'.format(r.reason))
-            except ConnectionError:
+            except Exception:
                 if attempt != attempts - 1:
                     time.sleep(2**(attempt + 1))
             else:
@@ -123,17 +123,18 @@ class renderResource:
         else:
             # we failed all the attempts - deal with the consequences.
             raise ConnectionError(
-                'Data not fetched with error: {}'.format(r.reason))
+                'Data from URL {} not fetched.  Status code {}, error {}'.format(
+                    img_URL, r.status_code, r.reason))
 
         im_obj = io.BytesIO(r.content)
         return np.array(Image.open(im_obj))[:, :, 0]
 
-    def get_render_img(self, z, dtype='uint8', window=None, threads=8):
+    def get_render_img(self, z, dtype='uint8', window=None, threads=1):
         # this requests the entire slice and returns the data, scaled if necessary
 
         # we'll break apart our request into a series of tiles
         # these will extend past the extent of the underlying data
-        stride = round(1024 / self.scale)
+        stride = round(2**13 / self.scale)  # 8K
         x_buckets = get_supercubes(
             self.x_rng_unscaled, stride=stride)
         y_buckets = get_supercubes(
