@@ -73,7 +73,7 @@ def download_rand_slice(boss_res_params, ingest_job, im_array_local, rand_slice)
 
     xM = np.shape(im_array_local)[1]
     yM = np.shape(im_array_local)[2]
-    stride = 512
+    stride = 2048
     attempts = 3
     for xi in range(0, xM, stride):
         xi_stop = xi + stride
@@ -303,6 +303,13 @@ def main():
                         help='Scale the data imported from render by this factor')
     parser.add_argument('--render_window', type=int, nargs=2,
                         help='Window used on 16bit -> 8 bit data conversion')
+
+    parser.add_argument('--limit_x', type=int, nargs=2,
+                        help='Enforced limit in x (down to level of coord frame) to get & post data')
+    parser.add_argument('--limit_y', type=int, nargs=2,
+                        help='Enforced limit in y (down to level of coord frame) to get & post data')
+    parser.add_argument('--limit_z', type=int, nargs=2,
+                        help='Enforced limit in z (down to level of coord frame) to get & post data')
 
     args = parser.parse_args()
 

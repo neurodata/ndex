@@ -25,7 +25,7 @@ from PIL import Image
 
 
 class renderResource:
-    def __init__(self, owner, project, stack, baseURL, channel=None, scale=None):
+    def __init__(self, owner, project, stack, baseURL, channel=None, scale=None, limit_x=None, limit_y=None, limit_z=None):
         self.owner = owner
         self.project = project
         self.stack = stack
@@ -38,6 +38,10 @@ class renderResource:
         # self.level = math.log(1 / scale, 2)
         self.session = requests.Session()
 
+        self.limit_x = limit_x
+        self.limit_y = limit_y
+        self.limit_z = limit_z
+
         self.set_metadata()
 
         if channel:
@@ -49,85 +53,6 @@ class renderResource:
     def __str__(self):
         from pprint import pformat
         return "<" + type(self).__name__ + "> " + pformat(vars(self), indent=4, width=1)
-
-    def set_metadata(self):
-        # even if you have a channel the metadata is located at the stack level
-        metaURL = '{}owner/{}/project/{}/stack/{}'.format(
-            self.baseURL, self.owner, self.project, self.stack)
-        r = self.session.get(metaURL, timeout=10)
-        if r.status_code != 200:
-            raise ConnectionError(
-                'Metadata not fetched, error {}'.format(r.reason))
-        resp = r.json()
-        stats = resp['stats']
-
-        x_start = round(stats['stackBounds']['minX'])
-        x_stop = round(stats['stackBounds']['maxX'])
-        y_start = round(stats['stackBounds']['minY'])
-        y_stop = round(stats['stackBounds']['maxY'])
-        z_start = round(stats['stackBounds']['minZ'])
-        z_stop = round(stats['stackBounds']['maxZ'])
-
-        self.x_rng_unscaled = [x_start, x_stop]
-        self.y_rng_unscaled = [y_start, y_stop]
-
-        self.x_rng = [round(a * self.scale) for a in self.x_rng_unscaled]
-        self.y_rng = [round(a * self.scale) for a in self.y_rng_unscaled]
-        self.z_rng = [z_start, z_stop]
-
-        self.tile_width = round(stats['maxTileWidth'])
-        self.tile_height = round(stats['maxTileHeight'])
-
-        channels = stats['channelNames']
-        self.channel_names = channels
-
-    def gen_render_url(self, z, x, y, x_width, y_width, window=None):
-        # using the box cutout
-
-        # this gives you the data at certain levels of downsampling (0 = full res, 1 = half, etc)
-        # row and column are the number of rows/colums in the data with the specified width/height
-        # GET /v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.png
-
-        # GET /v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image
-        img_URL = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image'.format(
-            self.baseURL, self.owner, self.project, self.stack, z, x, y, x_width, y_width, self.scale)
-
-        params = []
-        if self.channel is not None:
-            params.append('channel={}'.format(self.channel))
-
-        if window is not None:
-            params.append('minIntensity={}&maxIntensity={}'.format(
-                window[0], window[1]))
-
-        if params:
-            img_URL += '?' + '&'.join(params)
-
-        return img_URL
-
-    def get_render_tile(self, z, x, y, x_width, y_width, window=None, attempts=6):
-        # note that this returns data at scaled resolution, from box coords of unscaled res
-        img_URL = self.gen_render_url(z, x, y, x_width, y_width, window=window)
-
-        for attempt in range(attempts):
-            try:
-                r = self.session.get(img_URL, timeout=60)
-                if r.status_code != 200:
-                    raise ConnectionError(
-                        'Data not fetched with error: {}'.format(r.reason))
-            except Exception:
-                if attempt != attempts - 1:
-                    time.sleep(2**(attempt + 1))
-            else:
-                break
-        else:
-            # we failed all the attempts - deal with the consequences.
-            raise ConnectionError(
-                'Data from URL {} not fetched.  Status code {}, error {}'.format(
-                    img_URL, r.status_code, r.reason))
-
-        im_obj = io.BytesIO(r.content)
-        return np.array(Image.open(im_obj))[:, :, 0]
 
     def get_render_img(self, z, dtype='uint8', window=None, threads=1, tile_size=8192):
         # this requests the entire slice and returns the data, scaled if necessary
@@ -171,6 +96,108 @@ class renderResource:
         im_array = im_array[0:self.y_rng[1] - self.y_rng[0],
                             0:self.x_rng[1] - self.x_rng[0]]
         return im_array
+
+    def set_metadata(self):
+        # even if you have a channel the metadata is located at the stack level
+        metaURL = '{}owner/{}/project/{}/stack/{}'.format(
+            self.baseURL, self.owner, self.project, self.stack)
+        r = self.session.get(metaURL, timeout=10)
+        if r.status_code != 200:
+            raise ConnectionError(
+                'Metadata not fetched, error {}'.format(r.reason))
+        resp = r.json()
+        stats = resp['stats']
+
+        x_start = round(stats['stackBounds']['minX'])
+        x_stop = round(stats['stackBounds']['maxX'])
+        y_start = round(stats['stackBounds']['minY'])
+        y_stop = round(stats['stackBounds']['maxY'])
+        z_start = round(stats['stackBounds']['minZ'])
+        z_stop = round(stats['stackBounds']['maxZ'])
+
+        self.x_rng_unscaled = [x_start, x_stop]
+        self.y_rng_unscaled = [y_start, y_stop]
+
+        self.z_rng = [z_start, z_stop]
+
+        self.validate_xyz_limits()
+        self.apply_limits()
+
+        self.x_rng = [round(a * self.scale) for a in self.x_rng_unscaled]
+        self.y_rng = [round(a * self.scale) for a in self.y_rng_unscaled]
+
+        self.tile_width = round(stats['maxTileWidth'])
+        self.tile_height = round(stats['maxTileHeight'])
+
+        channels = stats['channelNames']
+        self.channel_names = channels
+
+    def apply_limits(self):
+        if self.limit_x is not None:
+            self.x_rng_unscaled = self.limit_x
+        if self.limit_y is not None:
+            self.y_rng_unscaled = self.limit_y
+        if self.limit_z is not None:
+            self.z_rng = self.limit_z
+
+    def validate_xyz_limits(self):
+        validate_limit(self.x_rng_unscaled, self.limit_x)
+        validate_limit(self.y_rng_unscaled, self.limit_y)
+        validate_limit(self.z_rng, self.limit_z)
+
+    def gen_render_url(self, z, x, y, x_width, y_width, window=None):
+        # using the box cutout
+
+        # this gives you the data at certain levels of downsampling (0 = full res, 1 = half, etc)
+        # row and column are the number of rows/colums in the data with the specified width/height
+        # GET /v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.png
+
+        # GET /v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image
+        img_URL = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image'.format(
+            self.baseURL, self.owner, self.project, self.stack, z, x, y, x_width, y_width, self.scale)
+
+        params = []
+        if self.channel is not None:
+            params.append('channels={}'.format(self.channel))
+
+        if window is not None:
+            params.append('minIntensity={}&maxIntensity={}'.format(
+                window[0], window[1]))
+
+        if params:
+            img_URL += '?' + '&'.join(params)
+
+        return img_URL
+
+    def get_render_tile(self, z, x, y, x_width, y_width, window=None, attempts=6):
+        # note that this returns data at scaled resolution, from box coords of unscaled res
+        img_URL = self.gen_render_url(z, x, y, x_width, y_width, window=window)
+
+        for attempt in range(attempts):
+            try:
+                r = self.session.get(img_URL, timeout=60)
+                if r.status_code != 200:
+                    raise ConnectionError(
+                        'Data not fetched with error: {}'.format(r.reason))
+            except Exception:
+                if attempt != attempts - 1:
+                    time.sleep(2**(attempt + 1))
+            else:
+                break
+        else:
+            # we failed all the attempts - deal with the consequences.
+            raise ConnectionError(
+                'Data from URL {} not fetched.  Status code {}, error {}'.format(
+                    img_URL, r.status_code, r.reason))
+
+        im_obj = io.BytesIO(r.content)
+        return np.array(Image.open(im_obj))[:, :, 0]
+
+
+def validate_limit(data_rng, limit):
+    if limit is not None:
+        if limit[0] < data_rng[0] or limit[1] > data_rng[1]:
+            raise ValueError
 
 
 def get_supercubes(rng, stride=512):

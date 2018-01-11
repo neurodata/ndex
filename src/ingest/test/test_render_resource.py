@@ -144,7 +144,7 @@ class TestRenderResource:
         window = [0, 5000]
 
         # GET /v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image
-        tile_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image?channel={}&minIntensity={}&maxIntensity={}'.format(
+        tile_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image?channels={}&minIntensity={}&maxIntensity={}'.format(
             self.baseURL, self.owner, self.project, self.stack, z, x, y, x_width, y_width, self.scale, self.channel, window[0], window[1])
 
         r = requests.get(tile_url)
@@ -186,11 +186,11 @@ class TestRenderResource:
 
     #     self.setup_render_channel()
     #     render_obj = renderResource(
-    #         self.owner, self.project, self.stack, self.baseURL, channel=self.channel, scale=self.scale)
+    #         self.owner, self.project, self.stack, self.baseURL, channels=self.channel, scale=self.scale)
 
     #     data = render_obj.get_render_img(z, dtype='uint8', window=window)
 
-    #     render_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image?channel={}&minIntensity={}&maxIntensity={}'.format(
+    #     render_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image?channels={}&minIntensity={}&maxIntensity={}'.format(
     #         self.baseURL, self.owner, self.project, self.stack, z,
     #         render_obj.x_rng_unscaled[0], render_obj.y_rng_unscaled[0],
     #         sum(map(abs, render_obj.x_rng_unscaled)),

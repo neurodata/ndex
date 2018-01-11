@@ -41,6 +41,10 @@ class IngestJob:
         self.warn_missing_files = args.get('warn_missing_files')
         self.z_range = args.get('z_range')
 
+        self.limit_x = args.get('limit_x')
+        self.limit_y = args.get('limit_y')
+        self.limit_z = args.get('limit_z')
+
         self.voxel_size = args.get('voxel_size')
         self.voxel_unit = args.get('voxel_unit')
         self.res = args.get('res')
@@ -72,7 +76,9 @@ class IngestJob:
 
             # create the render object in order to get the xyz extents
             self.render_obj = renderResource(
-                render_owner, render_project, render_stack, render_baseURL, channel=render_channel, scale=render_scale)
+                render_owner, render_project, render_stack, render_baseURL,
+                channel=render_channel, scale=render_scale,
+                limit_x=self.limit_x, limit_y=self.limit_y, limit_z=self.limit_z)
             self.x_extent = self.render_obj.x_rng
             self.y_extent = self.render_obj.y_rng
             self.z_extent = self.render_obj.z_rng
@@ -91,6 +97,8 @@ class IngestJob:
             self.x_extent = args.get('x_extent')
             self.y_extent = args.get('y_extent')
             self.z_extent = args.get('z_extent')
+            self.validate_xyz_limits()
+            self.apply_limits()
             self.z_step = args.get('z_step')
 
         # initialize offset to zero (x,y,z)
@@ -115,6 +123,22 @@ class IngestJob:
         # Document the arguments passed
         self.send_msg('{} Command parameters used: {}'.format(
             get_formatted_datetime(), args))
+
+    def apply_limits(self):
+        if self.limit_x is not None:
+            self.x_rng_unscaled = self.limit_x
+        if self.limit_y is not None:
+            self.y_rng_unscaled = self.limit_y
+        if self.limit_z is not None:
+            self.z_rng = self.limit_z
+
+    def validate_xyz_limits(self):
+        validate_limit(self.x_extent, self.limit_x)
+        validate_limit(self.y_extent, self.limit_y)
+        validate_limit(self.z_extent, self.limit_z)
+
+        # z range is a limit itself - we check we aren't going over our limit with z_range
+        validate_limit(self.limit_z, self.z_range)
 
     def create_slack_session(self, slack_token_file):
         if slack_token_file is None:
@@ -359,3 +383,9 @@ def calc_offsets(extents):
             offset = abs(extent[0])
         offsets.append(offset)
     return offsets
+
+
+def validate_limit(data_rng, limit):
+    if limit is not None:
+        if limit[0] < data_rng[0] or limit[1] > data_rng[1]:
+            raise ValueError
