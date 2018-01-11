@@ -129,12 +129,12 @@ class renderResource:
         im_obj = io.BytesIO(r.content)
         return np.array(Image.open(im_obj))[:, :, 0]
 
-    def get_render_img(self, z, dtype='uint8', window=None, threads=1):
+    def get_render_img(self, z, dtype='uint8', window=None, threads=1, tile_size=8192):
         # this requests the entire slice and returns the data, scaled if necessary
 
         # we'll break apart our request into a series of tiles
         # these will extend past the extent of the underlying data
-        stride = round(2**13 / self.scale)  # 8K
+        stride = round(tile_size / self.scale)  # 8K
         x_buckets = get_supercubes(
             self.x_rng_unscaled, stride=stride)
         y_buckets = get_supercubes(
@@ -154,8 +154,8 @@ class renderResource:
             data_array = pool.starmap(self.get_render_tile, args)
 
         # initialize to the size of the return data (scaled if necessary)
-        im_array = np.zeros([stride * len(y_buckets),
-                             stride * len(x_buckets)], dtype=dtype)
+        im_array = np.zeros([tile_size * len(y_buckets),
+                             tile_size * len(x_buckets)], dtype=dtype)
 
         # assembling the data
         for idx, data in enumerate(data_array):
