@@ -71,7 +71,8 @@ class renderResource:
         for _, x in x_buckets.items():
             for _, y in y_buckets.items():
                 args.append(
-                    (z, x[0], y[0], stride, stride, window))
+                    (z, x[0], y[0], min(stride, x[-1] - x[0] + 1),
+                     min(stride, y[-1] - y[0] + 1), window))
 
         # firing off the requests
         pool = ThreadPool(threads)
