@@ -258,11 +258,13 @@ class IngestJob:
             raise IOError(msg)
 
     def load_render_slice(self, z_slice):
+        self.send_msg('Getting slice {} from render. Time: {}'.format(
+            z_slice, time.asctime(time.localtime(time.time()))))
         try:
             return self.render_obj.get_render_img(z_slice, dtype=self.datatype, window=self.render_window)
         except Exception as err:
-            msg = 'Exception {} occurred when getting image {} from render'.format(
-                err, z_slice)
+            msg = 'Exception {} occurred when getting image {} from render with error message {}'.format(
+                err, z_slice, str(err))
             if self.warn_missing_files:
                 return None
             else:
