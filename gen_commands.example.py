@@ -106,6 +106,16 @@ zrange = [0, Z]
 # (forces single worker)
 # zrange = None
 
+# to crop the source data to a region of interest use these values.  Otherwise, set to None
+# limit_x = [XLIMLOW, XLIMHIGH]
+# limit_y = [YLIMLOW, YLIMHIGH]
+# limit_z = [ZLIMLOW, ZLIMHIGH]
+
+limit_x = None
+limit_y = None
+limit_z = None
+
+
 # Number of workers to use
 # each worker loads additional 16 image files so watch out for out of memory errors
 # ignored if zrange is None
@@ -130,6 +140,13 @@ def gen_comm(zstart, zend):
         cmd += ' --y_extent {d[0]} {d[1]}'.format(d=y_extent)
         cmd += ' --z_step {}'.format(z_step)
         cmd += ' --warn_missing_files'
+
+    if limit_x is not None:
+        cmd += ' --limit_x {d[0]} {d[1]}'.format(d=limit_x)
+    if limit_y is not None:
+        cmd += ' --limit_y {d[0]} {d[1]}'.format(d=limit_y)
+    if limit_z is not None:
+        cmd += ' --limit_z {d[0]} {d[1]}'.format(d=limit_z)
 
     try:
         if z_extent and zstart and zend:
