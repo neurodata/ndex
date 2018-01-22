@@ -179,6 +179,28 @@ class TestRenderResource:
 
         assert np.array_equal(data, test_data)
 
+    def test_get_render_img_threads(self):
+        z = 200
+        window = [0, 5000]
+        threads = 8
+
+        render_obj = renderResource(
+            self.owner, self.project, self.stack, self.baseURL, scale=self.scale)
+
+        render_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image?minIntensity={}&maxIntensity={}'.format(
+            self.baseURL, self.owner, self.project, self.stack, z,
+            render_obj.x_rng[0], render_obj.y_rng[0],
+            render_obj.x_rng[1], render_obj.y_rng[1],
+            self.scale, window[0], window[1])
+        r = requests.get(render_url)
+        test_img = Image.open(BytesIO(r.content))
+        test_data = np.asarray(test_img)[:, :, 0]
+
+        data = render_obj.get_render_img(
+            z, dtype='uint8', window=window, threads=threads)
+
+        assert np.array_equal(data, test_data)
+
     # def test_get_render_scaled_tile_channel(self):
     #     self.scale = .125
     #     z = 20
