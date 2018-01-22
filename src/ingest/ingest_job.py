@@ -388,6 +388,6 @@ def calc_offsets(extents):
 
 
 def validate_limit(data_rng, limit):
-    if limit is not None:
+    if data_rng is not None and limit is not None:
         if limit[0] < data_rng[0] or limit[1] > data_rng[1]:
             raise ValueError
