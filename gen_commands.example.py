@@ -148,11 +148,10 @@ def gen_comm(zstart, zend):
     if limit_z is not None:
         cmd += ' --limit_z {d[0]} {d[1]}'.format(d=limit_z)
 
-    try:
-        if z_extent and zstart and zend:
-            cmd += ' --z_extent {d[0]} {d[1]}'.format(d=z_extent)
-            cmd += ' --z_range %d %d ' % (zstart, zend)
-    except NameError:
+    if 'z_extent' in globals() and 'zstart' in locals() and 'zend' in locals():
+        cmd += ' --z_extent {d[0]} {d[1]}'.format(d=z_extent)
+        cmd += ' --z_range %d %d ' % (zstart, zend)
+    else:
         # getting this directly from render
         if source_type == 'render':
             pass
