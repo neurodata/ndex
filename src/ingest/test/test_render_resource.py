@@ -13,9 +13,10 @@ class TestRenderResource:
         self.owner = '6_ribbon_experiments'
         self.project = 'M321160_Ai139_smallvol'
         # stack = 'Acquisition_1_PSD95' #10kx10k
-        self.stack = 'Median_1_GFP'
+        self.stack = 'Median_1_DAPI_1'
         self.scale = 1
         self.baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
+        self.datatype = 'uint8'
 
     @classmethod
     def setup_class(cls):
@@ -27,13 +28,14 @@ class TestRenderResource:
 
     def test_create_render_resource(self):
         render_obj = renderResource(
-            self.owner, self.project, self.stack, self.baseURL, scale=self.scale)
+            self.owner, self.project, self.stack, self.baseURL, self.datatype, scale=self.scale)
 
         assert render_obj.x_rng == [0, 5608]
         assert render_obj.y_rng == [0, 2049]
         assert render_obj.z_rng == [0, 536]
         assert render_obj.tile_width == 2048
         assert render_obj.tile_width == 2048
+        assert render_obj.datatype == 'uint8'
 
     def setup_render_channel(self):
         self.owner = 'Forrest'
@@ -46,7 +48,7 @@ class TestRenderResource:
         # http://render-dev-eric.neurodata.io/render-ws/v1/owner/Forrest/project/M247514_Rorb_1/stack/Site3Align2_LENS_Session1
         self.setup_render_channel()
         render_obj = renderResource(
-            self.owner, self.project, self.stack, self.baseURL, channel=self.channel, scale=self.scale)
+            self.owner, self.project, self.stack, self.baseURL, self.datatype, channel=self.channel, scale=self.scale)
 
         assert render_obj.x_rng == [-27814, 63396]
         assert render_obj.y_rng == [-67750, 69698]
@@ -59,7 +61,7 @@ class TestRenderResource:
         channel = 'notAchannel'
 
         with pytest.raises(AssertionError):
-            renderResource(owner, project, stack, self.baseURL,
+            renderResource(owner, project, stack, self.baseURL, self.datatype,
                            channel=channel, scale=self.scale)
 
     def test_wrong_stack(self):
@@ -67,12 +69,12 @@ class TestRenderResource:
         project = 'M321160_Ai139_smallvol'
         stack = 'DOES_NOT_EXIST'
         with pytest.raises(ConnectionError):
-            renderResource(owner, project, stack, self.baseURL)
+            renderResource(owner, project, stack, self.baseURL, self.datatype)
 
     def test_create_render_resource_half_scale(self):
         self.scale = .5
         render_obj = renderResource(
-            self.owner, self.project, self.stack, self.baseURL, scale=self.scale)
+            self.owner, self.project, self.stack, self.baseURL, self.datatype, scale=self.scale)
 
         assert render_obj.scale == self.scale
 
@@ -100,7 +102,32 @@ class TestRenderResource:
         test_data = np.asarray(test_img)[:, :, 0]
 
         render_obj = renderResource(
-            self.owner, self.project, self.stack, self.baseURL, scale=self.scale)
+            self.owner, self.project, self.stack, self.baseURL, self.datatype, scale=self.scale)
+        data = render_obj.get_render_tile(z, x, y, x_width, y_width)
+
+        assert data.shape == (y_width, x_width)
+        assert np.array_equal(data, test_data)
+
+    def test_get_render_tile_no_window_uint16(self):
+        x = 50
+        y = 512
+        z = 17
+        x_width = 512
+        y_width = 1024
+        datatype = 'uint16'
+
+        # GET /v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png16-image
+        tile_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png16-image'.format(
+            self.baseURL, self.owner, self.project, self.stack, z, x, y, x_width, y_width, self.scale)
+        print(tile_url)
+        r = requests.get(tile_url)
+
+        test_img = Image.open(BytesIO(r.content))
+        # dim 3 is RGBA (A=alpha), for grayscale, RGB values are all the same
+        test_data = np.asarray(test_img)
+
+        render_obj = renderResource(
+            self.owner, self.project, self.stack, self.baseURL, datatype, scale=self.scale)
         data = render_obj.get_render_tile(z, x, y, x_width, y_width)
 
         assert data.shape == (y_width, x_width)
@@ -123,7 +150,7 @@ class TestRenderResource:
         test_data = np.asarray(test_img)[:, :, 0]
 
         render_obj = renderResource(
-            self.owner, self.project, self.stack, self.baseURL, scale=self.scale)
+            self.owner, self.project, self.stack, self.baseURL, self.datatype, scale=self.scale)
         data = render_obj.get_render_tile(
             z, x, y, x_width, y_width, window)
 
@@ -134,7 +161,7 @@ class TestRenderResource:
         self.setup_render_channel()
         self.scale = .125
         render_obj = renderResource(
-            self.owner, self.project, self.stack, self.baseURL, channel=self.channel, scale=self.scale)
+            self.owner, self.project, self.stack, self.baseURL, self.datatype, channel=self.channel, scale=self.scale)
 
         x = 4200
         y = 6500
@@ -164,7 +191,7 @@ class TestRenderResource:
         window = [0, 5000]
 
         render_obj = renderResource(
-            self.owner, self.project, self.stack, self.baseURL, scale=self.scale)
+            self.owner, self.project, self.stack, self.baseURL, self.datatype, scale=self.scale)
 
         render_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image?minIntensity={}&maxIntensity={}'.format(
             self.baseURL, self.owner, self.project, self.stack, z,
@@ -175,7 +202,27 @@ class TestRenderResource:
         test_img = Image.open(BytesIO(r.content))
         test_data = np.asarray(test_img)[:, :, 0]
 
-        data = render_obj.get_render_img(z, dtype='uint8', window=window)
+        data = render_obj.get_render_img(z, window=window)
+
+        assert np.array_equal(data, test_data)
+
+    def test_get_render_img_uint16(self):
+        z = 200
+        self.datatype = 'uint16'
+
+        render_obj = renderResource(
+            self.owner, self.project, self.stack, self.baseURL, self.datatype, scale=self.scale)
+
+        render_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png16-image'.format(
+            self.baseURL, self.owner, self.project, self.stack, z,
+            render_obj.x_rng[0], render_obj.y_rng[0],
+            render_obj.x_rng[1], render_obj.y_rng[1],
+            self.scale)
+        r = requests.get(render_url)
+        test_img = Image.open(BytesIO(r.content))
+        test_data = np.asarray(test_img)
+
+        data = render_obj.get_render_img(z)
 
         assert np.array_equal(data, test_data)
 
@@ -185,7 +232,7 @@ class TestRenderResource:
         threads = 8
 
         render_obj = renderResource(
-            self.owner, self.project, self.stack, self.baseURL, scale=self.scale)
+            self.owner, self.project, self.stack, self.baseURL, self.datatype, scale=self.scale)
 
         render_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image?minIntensity={}&maxIntensity={}'.format(
             self.baseURL, self.owner, self.project, self.stack, z,
@@ -196,8 +243,7 @@ class TestRenderResource:
         test_img = Image.open(BytesIO(r.content))
         test_data = np.asarray(test_img)[:, :, 0]
 
-        data = render_obj.get_render_img(
-            z, dtype='uint8', window=window, threads=threads)
+        data = render_obj.get_render_img(z, window=window, threads=threads)
 
         assert np.array_equal(data, test_data)
 
@@ -243,7 +289,7 @@ class TestRenderResource:
         window = [0, 5000]
 
         render_obj = renderResource(
-            self.owner, self.project, self.stack, self.baseURL, scale=self.scale)
+            self.owner, self.project, self.stack, self.baseURL, self.datatype,  scale=self.scale)
 
         render_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image?minIntensity={}&maxIntensity={}'.format(
             self.baseURL, self.owner, self.project, self.stack, z,
@@ -255,7 +301,7 @@ class TestRenderResource:
         test_img = Image.open(BytesIO(r.content))
         test_data = np.asarray(test_img)[:, :, 0]
 
-        data = render_obj.get_render_img(z, dtype='uint8', window=window)
+        data = render_obj.get_render_img(z, window=window)
 
         assert data.shape == test_data.shape
         assert np.array_equal(data, test_data)
@@ -265,8 +311,8 @@ class TestRenderResource:
         window = [0, 5000]
 
         render_obj = renderResource(
-            self.owner, self.project, self.stack, self.baseURL, scale=self.scale)
-        data = render_obj.get_render_img(z, dtype='uint8', window=window)
+            self.owner, self.project, self.stack, self.baseURL, self.datatype, scale=self.scale)
+        data = render_obj.get_render_img(z, window=window)
 
         window = [0, 10000]
         render_url = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image?minIntensity={}&maxIntensity={}'.format(

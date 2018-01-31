@@ -25,7 +25,7 @@ from PIL import Image
 
 
 class renderResource:
-    def __init__(self, owner, project, stack, baseURL, channel=None, scale=None, limit_x=None, limit_y=None, limit_z=None):
+    def __init__(self, owner, project, stack, baseURL, datatype, channel=None, scale=None, limit_x=None, limit_y=None, limit_z=None):
         self.owner = owner
         self.project = project
         self.stack = stack
@@ -34,6 +34,8 @@ class renderResource:
             self.scale = 1
         else:
             self.scale = scale
+
+        self.datatype = datatype
 
         # self.level = math.log(1 / scale, 2)
         self.session = requests.Session()
@@ -54,7 +56,7 @@ class renderResource:
         from pprint import pformat
         return "<" + type(self).__name__ + "> " + pformat(vars(self), indent=4, width=1)
 
-    def get_render_img(self, z, dtype='uint8', window=None, threads=1, tile_size=8192):
+    def get_render_img(self, z, window=None, threads=1, tile_size=8192):
         # this requests the entire slice and returns the data, scaled if necessary
 
         # we'll break apart our request into a series of tiles
@@ -80,7 +82,7 @@ class renderResource:
 
         # initialize to the size of the return data (scaled if necessary)
         im_array = np.zeros([tile_size * len(y_buckets),
-                             tile_size * len(x_buckets)], dtype=dtype)
+                             tile_size * len(x_buckets)], dtype=self.datatype)
 
         # assembling the data
         for idx, data in enumerate(data_array):
@@ -153,8 +155,14 @@ class renderResource:
         # GET /v1/owner/{owner}/project/{project}/stack/{stack}/largeDataTileSource/{width}/{height}/{level}/{z}/{row}/{column}.png
 
         # GET /v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png-image
-        img_URL = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png-image'.format(
-            self.baseURL, self.owner, self.project, self.stack, z, x, y, x_width, y_width, self.scale)
+        # GET /v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/box/{x},{y},{width},{height},{scale}/png16-image
+        if self.datatype == 'uint16':
+            png_type = '16'
+        else:
+            png_type = ''
+
+        img_URL = '{}owner/{}/project/{}/stack/{}/z/{}/box/{},{},{},{},{}/png{}-image'.format(
+            self.baseURL, self.owner, self.project, self.stack, z, x, y, x_width, y_width, self.scale, png_type)
 
         params = []
         if self.channel is not None:
@@ -191,7 +199,11 @@ class renderResource:
                     img_URL, r.status_code, r.reason))
 
         im_obj = io.BytesIO(r.content)
-        return np.array(Image.open(im_obj))[:, :, 0]
+
+        if self.datatype == 'uint16':
+            return np.array(Image.open(im_obj))
+        else:
+            return np.array(Image.open(im_obj))[:, :, 0]
 
 
 def validate_limit(data_rng, limit):

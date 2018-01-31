@@ -140,6 +140,28 @@ class TestIngestJob:
         self.set_render_args()
         ingest_job = IngestJob(self.args)
 
+        assert ingest_job.datatype == 'uint8'
+
+        assert ingest_job.render_obj.scale == 1
+        assert ingest_job.render_window is None
+
+        assert ingest_job.x_extent == [0, 5608]
+        assert ingest_job.y_extent == [0, 2049]
+        assert ingest_job.z_extent == [0, 536]
+
+        assert ingest_job.render_obj.tile_width == 2048
+        assert ingest_job.render_obj.tile_height == 2047
+
+        assert ingest_job.z_range == [0, 1]  # from our params in setup
+        os.remove(ingest_job.get_log_fname())
+
+    def test_create_render_IngestJob_uint16(self):
+        self.set_render_args()
+        self.args.datatype = 'uint16'
+        ingest_job = IngestJob(self.args)
+
+        assert ingest_job.datatype == 'uint16'
+
         assert ingest_job.render_obj.scale == 1
         assert ingest_job.render_window is None
 

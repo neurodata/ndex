@@ -75,10 +75,8 @@ class IngestJob:
             self.render_window = args.get('render_window')
 
             # create the render object in order to get the xyz extents
-            self.render_obj = renderResource(
-                render_owner, render_project, render_stack, render_baseURL,
-                channel=render_channel, scale=render_scale,
-                limit_x=self.limit_x, limit_y=self.limit_y, limit_z=self.limit_z)
+            self.render_obj = renderResource(render_owner, render_project, render_stack, render_baseURL, self.datatype,
+                                             channel=render_channel, scale=render_scale, limit_x=self.limit_x, limit_y=self.limit_y, limit_z=self.limit_z)
             self.x_extent = self.render_obj.x_rng
             self.y_extent = self.render_obj.y_rng
             self.z_extent = self.render_obj.z_rng
@@ -261,7 +259,7 @@ class IngestJob:
         self.send_msg('Getting slice {} from render. Time: {}'.format(
             z_slice, time.asctime(time.localtime(time.time()))))
         try:
-            return self.render_obj.get_render_img(z_slice, dtype=self.datatype, window=self.render_window)
+            return self.render_obj.get_render_img(z_slice, window=self.render_window)
         except Exception as err:
             msg = 'Exception {} occurred when getting image {} from render with error message {}'.format(
                 err, z_slice, str(err))
