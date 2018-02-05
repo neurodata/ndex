@@ -1,0 +1,4 @@
+[Default]
+protocol = https
+host = api.boss.neurodata.io
+token = <<your token from https://api.boss.neurodata.io/token/ here>>
