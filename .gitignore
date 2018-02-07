@@ -110,3 +110,5 @@ local_img_test_data/
 repeat_cutouts*.txt
 log*.txt
 *_log_*.txt
+neurodata_dev.cfg
+neurodata_dev.cfg

@@ -1,11 +1,11 @@
--e git://github.com/jhuapl-boss/intern.git#egg=intern
+intern>=0.9.6
 requests>=2.18.4
 slacker>=0.9.60
-boto3>=1.4.8
+boto3>=1.5.24
 tailer>=0.4.1
 numpy>=1.14.0
 Pillow>=5.0.0
 tqdm>=4.19.5
-tifffile>=0.13.4
-pytest>=3.3.2
+tifffile>=0.13.5
+pytest>=3.4.0
 pypng>=0.0.18
