@@ -10,6 +10,7 @@ import sys
 import time
 from functools import partial
 from multiprocessing.dummy import Pool as ThreadPool
+from collections import defaultdict
 
 import blosc
 import numpy as np
@@ -141,6 +142,19 @@ class BossRemote:
                           order='C')
 
 
+def get_cube_lims(rng, stride=16):
+    # stride = height of super cuboid
+
+    first = rng[0]    # inclusive
+    last = rng[1]     # exclusive
+
+    buckets = defaultdict(list)
+    for z in range(first, last):
+        buckets[(z // stride)].append(z)
+
+    return buckets
+
+
 def parse_cmd_line_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file', type=str,
@@ -194,16 +208,17 @@ def download_slices(result, rmt, threads=8):
 
     # download blocks of size 512 by 512 by 16 (xyz)
     chunk_size = (512, 512, 16)
-    for z in range(result.z[0], result.z[1], chunk_size[2]):
+
+    z_buckets = get_cube_lims(result.z, stride=chunk_size[2])
+    for _, z_slices in z_buckets.items():
+        z_rng = [z_slices[0], z_slices[-1] + 1]
+
         # re-initialize on every slice of z
         # zyx ordered
-        data_slices = np.zeros((result.z[1] - result.z[0],
+        data_slices = np.zeros((z_rng[1] - z_rng[0],
                                 result.y[1] - result.y[0],
                                 result.x[1] - result.x[0]),
                                dtype=datatype)
-
-        z_rng = [z, result.z[1] if (
-            z + chunk_size[2]) > result.z[1] else (z + chunk_size[2])]
 
         for y in range(result.y[0], result.y[1], chunk_size[1]):
             y_rng = [y, result.y[1] if (
@@ -222,10 +237,10 @@ def download_slices(result, rmt, threads=8):
             # data = rmt.cutout(x_rng, y_rng, z_rng, datatype, result.res)
             for data, x_rng in zip(data_list, x_rngs):
                 # insert into numpy array
-                data_slices[z_rng[0] - result.z[0]:z_rng[1] - result.z[0],
+                data_slices[0:z_rng[1] - z_rng[0],
                             y_rng[0] - result.y[0]:y_rng[1] - result.y[0],
                             x_rng[0] - result.x[0]:x_rng[1] - result.x[0]] = data
-
+        print(data_slices.shape, z_rng)
         save_to_tiffs(data_slices, rmt.meta, result, z_rng)
 
 
@@ -244,7 +259,7 @@ def save_to_tiffs(data_slices, meta, result, z_rng):
             meta.collection(), meta.experiment(), meta.channel(),
             x=result.x, y=result.y, z=zslice, dig=digits)
 
-        data = data_slices[zslice - result.z[0], :, :]
+        data = data_slices[zslice - z_rng[0], :, :]
         tiff.imsave(cutout_path + fname, data,
                     metadata={'DocumentName': fname}, compress=6)
 
@@ -305,7 +320,7 @@ def test_small_cutout():
     result = argparse.Namespace(
         x=[0, 512],
         y=[500, 1000],
-        z=[3, 10],
+        z=[10, 25],
         config_file='neurodata.cfg',
         collection='lee',
         experiment='lee14',
@@ -328,11 +343,61 @@ def test_small_cutout():
     resp.raise_for_status()
     data_decompress = blosc.decompress(resp.content)
     data_np = np.fromstring(data_decompress, dtype=datatype)
-    data_direct = np.reshape(data_np, (7, 500, 512))
+    data_direct = np.reshape(
+        data_np, (result.z[1]-result.z[0], result.y[1]-result.y[0], result.x[1]-result.x[0]))
 
     data = rmt.cutout(result.x, result.y, result.z, 'uint8', 0)
 
     assert np.array_equal(data, data_direct)
+
+
+def test_small_download():
+    result = argparse.Namespace(
+        x=[81920, 81920+512],
+        y=[81920, 81920+500],
+        z=[395, 412],
+        config_file='neurodata.cfg',
+        collection='lee',
+        experiment='lee14',
+        channel='image',
+        print_metadata=None,
+        full_extent=None,
+        res=0,
+        outdir='test_images/'
+    )
+    datatype = 'uint8'
+
+    result, rmt = validate_args(result)
+    download_slices(result, rmt)
+
+    # get the data from boss web api directly
+    cutout_url_base = "{}/{}/cutout/{}/{}/{}".format(
+        result.url, BOSS_VERSION, result.collection, result.experiment, result.channel)
+    cutout_url = "{}/{}/{}:{}/{}:{}/{}:{}/".format(
+        cutout_url_base, 0, result.x[0], result.x[1],
+        result.y[0], result.y[1], result.z[0], result.z[1])
+    resp = requests.get(cutout_url,
+                        headers={'Authorization': 'Token {}'.format(result.token),
+                                 'Accept': 'application/blosc'})
+    resp.raise_for_status()
+    data_decompress = blosc.decompress(resp.content)
+    data_np = np.fromstring(data_decompress, dtype=datatype)
+    data_direct = np.reshape(
+        data_np, (result.z[1]-result.z[0], result.y[1]-result.y[0], result.x[1]-result.x[0]))
+    for z in range(result.z[0], result.z[1]):
+        tiff.imsave('test_images/{}.tif'.format(z),
+                    data=data_direct[z-result.z[0], :])
+
+    # assert here that the tiff files are equal
+    for z in range(result.z[0], result.z[1]):
+        data_direct = tiff.imread('test_images/{}.tif'.format(z))
+
+        fname = 'test_images/{}_{}_{}_x{x[0]}-{x[1]}_y{y[0]}-{y[1]}_z{z:0{dig}d}.tif'.format(
+            result.collection, result.experiment, result.channel,
+            x=result.x, y=result.y, z=z, dig=3)
+        data_pull = tiff.imread(fname)
+
+        assert np.array_equal(data_direct, data_pull)
 
 
 # to add:
