@@ -17,8 +17,12 @@ import numpy as np
 import pytest
 import requests
 import tifffile as tiff
+from tqdm import tqdm
 
 BOSS_VERSION = "v1"
+
+# download blocks of size 2k by 2k by 16 (xyz), should be multiples of 512 x 512 x 16
+CHUNK_SIZE = (2048, 2048, 16)
 
 
 class BossMeta:
@@ -155,7 +159,22 @@ def get_cube_lims(rng, stride=16):
     return buckets
 
 
-def parse_cmd_line_args():
+def collect_input_args(collection, experiment, channel, config_file=None, token=None, url='https://api.boss.neurodata.io', x=None, y=None, z=None, res=0, outdir='./', full_extent=False, print_metadata=False):
+    result = argparse.Namespace(
+        collection=collection,
+        experiment=experiment,
+        channel=channel,
+        config_file=config_file,
+        token=token,
+        url=url,
+        x=x, y=y, z=z, res=res, outdir=outdir,
+        full_extent=full_extent,
+        print_metadata=print_metadata
+    )
+    return result
+
+
+def collect_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file', type=str,
                         help='User config file for BOSS')
@@ -198,19 +217,14 @@ def get_boss_config(boss_config_file):
     return token, boss_url
 
 
-def download_slices(result, rmt, threads=8):
+def download_slices(result, rmt, threads=4):
 
     # get the datatype
     ch_meta = rmt.get_channel_metdata()
     datatype = ch_meta['datatype']
 
-    session = requests.Session()
-
-    # download blocks of size 512 by 512 by 16 (xyz)
-    chunk_size = (512, 512, 16)
-
-    z_buckets = get_cube_lims(result.z, stride=chunk_size[2])
-    for _, z_slices in z_buckets.items():
+    z_buckets = get_cube_lims(result.z, stride=CHUNK_SIZE[2])
+    for _, z_slices in tqdm(z_buckets.items()):
         z_rng = [z_slices[0], z_slices[-1] + 1]
 
         # re-initialize on every slice of z
@@ -220,14 +234,14 @@ def download_slices(result, rmt, threads=8):
                                 result.x[1] - result.x[0]),
                                dtype=datatype)
 
-        for y in range(result.y[0], result.y[1], chunk_size[1]):
+        for y in range(result.y[0], result.y[1], CHUNK_SIZE[1]):
             y_rng = [y, result.y[1] if (
-                y + chunk_size[1]) > result.y[1] else (y + chunk_size[1])]
+                y + CHUNK_SIZE[1]) > result.y[1] else (y + CHUNK_SIZE[1])]
 
             x_rngs = []
-            for x in range(result.x[0], result.x[1], chunk_size[0]):
+            for x in range(result.x[0], result.x[1], CHUNK_SIZE[0]):
                 x_rngs.append([x, result.x[1] if (
-                    x + chunk_size[0]) > result.x[1] else (x + chunk_size[0])])
+                    x + CHUNK_SIZE[0]) > result.x[1] else (x + CHUNK_SIZE[0])])
 
             cutout_partial = partial(
                 rmt.cutout, y_rng=y_rng, z_rng=z_rng, datatype=datatype, res=result.res)
@@ -237,10 +251,10 @@ def download_slices(result, rmt, threads=8):
             # data = rmt.cutout(x_rng, y_rng, z_rng, datatype, result.res)
             for data, x_rng in zip(data_list, x_rngs):
                 # insert into numpy array
-                data_slices[0:z_rng[1] - z_rng[0],
+                data_slices[:,
                             y_rng[0] - result.y[0]:y_rng[1] - result.y[0],
                             x_rng[0] - result.x[0]:x_rng[1] - result.x[0]] = data
-        print(data_slices.shape, z_rng)
+
         save_to_tiffs(data_slices, rmt.meta, result, z_rng)
 
 
@@ -262,142 +276,6 @@ def save_to_tiffs(data_slices, meta, result, z_rng):
         data = data_slices[zslice - z_rng[0], :, :]
         tiff.imsave(cutout_path + fname, data,
                     metadata={'DocumentName': fname}, compress=6)
-
-
-def test_print_meta():
-    meta = BossMeta('lee', 'lee14', 'image')
-
-    token, boss_url = get_boss_config('neurodata.cfg')
-    rmt = BossRemote(boss_url, token, meta)
-    print(rmt)
-
-
-def test_no_token():
-    result = argparse.Namespace(
-        config_file=None,
-        token=None,
-    )
-    with pytest.raises(ValueError, message='Need token or config file'):
-        validate_args(result)
-
-
-def test_wrong_extents():
-    result = argparse.Namespace(
-        x=[0, 512],
-        y=[500, 1000],
-        z=[-1, 10],
-        config_file='neurodata.cfg',
-        collection='lee',
-        experiment='lee14',
-        channel='image',
-        print_metadata=None,
-        full_extent=None,
-    )
-    with pytest.raises(ValueError):
-        validate_args(result)
-
-
-def test_create_rmt():
-    result = argparse.Namespace(
-        x=[0, 512],
-        y=[500, 1000],
-        z=[0, 10],
-        config_file='neurodata.cfg',
-        collection='lee',
-        experiment='lee14',
-        channel='image',
-        print_metadata=None,
-        full_extent=None,
-    )
-    result, rmt = validate_args(result)
-
-    assert rmt.meta.collection() == result.collection
-    assert rmt.meta.experiment() == result.experiment
-    assert rmt.meta.channel() == result.channel
-
-
-def test_small_cutout():
-    result = argparse.Namespace(
-        x=[0, 512],
-        y=[500, 1000],
-        z=[10, 25],
-        config_file='neurodata.cfg',
-        collection='lee',
-        experiment='lee14',
-        channel='image',
-        print_metadata=None,
-        full_extent=None,
-    )
-    datatype = 'uint8'
-
-    result, rmt = validate_args(result)
-
-    cutout_url_base = "{}/{}/cutout/{}/{}/{}".format(
-        result.url, BOSS_VERSION, result.collection, result.experiment, result.channel)
-    cutout_url = "{}/{}/{}:{}/{}:{}/{}:{}/".format(
-        cutout_url_base, 0, result.x[0], result.x[1],
-        result.y[0], result.y[1], result.z[0], result.z[1])
-    resp = requests.get(cutout_url,
-                        headers={'Authorization': 'Token {}'.format(result.token),
-                                 'Accept': 'application/blosc'})
-    resp.raise_for_status()
-    data_decompress = blosc.decompress(resp.content)
-    data_np = np.fromstring(data_decompress, dtype=datatype)
-    data_direct = np.reshape(
-        data_np, (result.z[1]-result.z[0], result.y[1]-result.y[0], result.x[1]-result.x[0]))
-
-    data = rmt.cutout(result.x, result.y, result.z, 'uint8', 0)
-
-    assert np.array_equal(data, data_direct)
-
-
-def test_small_download():
-    result = argparse.Namespace(
-        x=[81920, 81920+512],
-        y=[81920, 81920+500],
-        z=[395, 412],
-        config_file='neurodata.cfg',
-        collection='lee',
-        experiment='lee14',
-        channel='image',
-        print_metadata=None,
-        full_extent=None,
-        res=0,
-        outdir='test_images/'
-    )
-    datatype = 'uint8'
-
-    result, rmt = validate_args(result)
-    download_slices(result, rmt)
-
-    # get the data from boss web api directly
-    cutout_url_base = "{}/{}/cutout/{}/{}/{}".format(
-        result.url, BOSS_VERSION, result.collection, result.experiment, result.channel)
-    cutout_url = "{}/{}/{}:{}/{}:{}/{}:{}/".format(
-        cutout_url_base, 0, result.x[0], result.x[1],
-        result.y[0], result.y[1], result.z[0], result.z[1])
-    resp = requests.get(cutout_url,
-                        headers={'Authorization': 'Token {}'.format(result.token),
-                                 'Accept': 'application/blosc'})
-    resp.raise_for_status()
-    data_decompress = blosc.decompress(resp.content)
-    data_np = np.fromstring(data_decompress, dtype=datatype)
-    data_direct = np.reshape(
-        data_np, (result.z[1]-result.z[0], result.y[1]-result.y[0], result.x[1]-result.x[0]))
-    for z in range(result.z[0], result.z[1]):
-        tiff.imsave('test_images/{}.tif'.format(z),
-                    data=data_direct[z-result.z[0], :])
-
-    # assert here that the tiff files are equal
-    for z in range(result.z[0], result.z[1]):
-        data_direct = tiff.imread('test_images/{}.tif'.format(z))
-
-        fname = 'test_images/{}_{}_{}_x{x[0]}-{x[1]}_y{y[0]}-{y[1]}_z{z:0{dig}d}.tif'.format(
-            result.collection, result.experiment, result.channel,
-            x=result.x, y=result.y, z=z, dig=3)
-        data_pull = tiff.imread(fname)
-
-        assert np.array_equal(data_direct, data_pull)
 
 
 # to add:
@@ -445,8 +323,7 @@ def validate_args(result):
 
 
 def main():
-    result = parse_cmd_line_args()
-
+    result = collect_args()
     result, rmt = validate_args(result)
 
     print('Starting download')

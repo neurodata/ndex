@@ -99,7 +99,6 @@ ENV/
 
 # mypy
 .mypy_cache/
-.vscode/settings.json
+.vscode/*
 neurodata.cfg
-test_images/
-.vscode
+.pytest_cache/*

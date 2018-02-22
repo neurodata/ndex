@@ -1,28 +1,32 @@
 # ndpull
-Python 3 command line tool to get data from NeuroData.  Can download a full stack of data or specify limits.  View available data at [ndwebtools](https://ndwebtools.neurodata.io/) or [neurodata.io](https://neurodata.io/)
+
+Python 3 command line program to download data from NeuroData.  Can download a full stack of data or with specific limits.  View available data at [ndwebtools](https://ndwebtools.neurodata.io/) or [neurodata.io](https://neurodata.io/)
 
 ## Install
+
+### From github (latest development version)
+
 1. `git clone https://github.com/neurodata/ndpull.git`
-1. `virtualenv env -p python3`
+1. `python -m venv env`
     1. LINUX: `env/bin/activate`
     1. WIN: `.\env\Scripts\activate` (Change permissions if on Powershell: [guide](https://virtualenv.pypa.io/en/stable/userguide/#activate-script))
-1. `pip install -r requirements.txt`
+1. `cd ndpull`
+1. `pip install .`
 
 ## Config
+
 1. generate a [Boss API key](https://api.boss.neurodata.io/v1/mgmt/token) and save it to file named `neurodata.cfg` (example provided: [neurodata.cfg.example](neurodata.cfg.example))
 
 ## Run
 
-```dos
-python .\stackDownload.py --help
-```
+### Command line
 
 ```dos
-usage: stackDownload.py [-h] [--config_file CONFIG_FILE] [--token TOKEN]
-                        [--url URL] [--collection COLLECTION]
-                        [--experiment EXPERIMENT] [--channel CHANNEL]
-                        [--x X X] [--y Y Y] [--z Z Z] [--res RES]
-                        [--outdir OUTDIR] [--full_extent] [--print_metadata]
+> ndpull --help
+usage: ndpull [-h] [--config_file CONFIG_FILE] [--token TOKEN] [--url URL]
+              [--collection COLLECTION] [--experiment EXPERIMENT]
+              [--channel CHANNEL] [--x X X] [--y Y Y] [--z Z Z] [--res RES]
+              [--outdir OUTDIR] [--full_extent] [--print_metadata]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -47,3 +51,37 @@ optional arguments:
                         collection/experiment/channel and quits
 ```
 
+```dos
+> ndpull --config_file .\neurodata.cfg --collection kharris15 --experiment apical --channel em --x 4096 4608 --y 4608 5120 --z 90 100 --outdir .
+```
+
+### Python
+
+```python
+from ndpull import ndpull
+
+collection = 'kharris15'
+experiment = 'apical'
+channel = 'em'
+
+# see neurodata.cfg.example to generate your own
+config_file = 'neurodata.cfg'
+
+# print metadata
+meta = ndpull.BossMeta(collection, experiment, channel)
+token, boss_url = ndpull.get_boss_config(config_file)
+rmt = ndpull.BossRemote(boss_url, token, meta)
+print(rmt) # prints metadata
+
+# download slices with these limits:
+x = [4096, 4608]
+y = [4608, 5120]
+z = [90, 100]
+
+# returns a namespace as a way of passing arguments
+result = ndpull.collect_input_args(
+    collection, experiment, channel, config_file, x=x, y=y, z=z, res=0, outdir='./')
+
+# downloads the data
+ndpull.download_slices(result, rmt)
+```
