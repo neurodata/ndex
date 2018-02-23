@@ -98,6 +98,23 @@ z_extent = [0, Z]
 # if any of the extents are negative, they need to be offset to >= 0 for the boss
 offset_extents = False
 
+# you can manually force offsets for a channel.
+# Useful when there are a handful of mult. channels, with different negative extents,
+# that you want to have in the same shared volume
+# note that if using render scale, this should be in the scaled coordinates
+forced_offsets = None
+# forced_offsets = [0, 0, 0]
+
+# only need to specify if forcing a particular coordinate frame extent
+# note that if using render scale, this should be in the scaled coordinates
+coord_frame_x_extent = None
+coord_frame_y_extent = None
+coord_frame_z_extent = None
+# coord_frame_x_extent = [0, X]
+# coord_frame_y_extent = [0, Y]
+# coord_frame_z_extent = [0, Z]
+
+
 # first inclusive, last _exclusive_ list of sections to ingest for _this_ job (can be negative)
 # typically the same as Z "extent"
 # optional for render (used w/ mult. workers), requires z_extent (above)
@@ -107,19 +124,19 @@ zrange = [0, Z]
 # zrange = None
 
 # to crop the source data to a region of interest use these values.  Otherwise, set to None
-# limit_x = [XLIMLOW, XLIMHIGH]
-# limit_y = [YLIMLOW, YLIMHIGH]
-# limit_z = [ZLIMLOW, ZLIMHIGH]
-
+# currently only works in render
 limit_x = None
 limit_y = None
 limit_z = None
+# limit_x = [XLIMLOW, XLIMHIGH]
+# limit_y = [YLIMLOW, YLIMHIGH]
+# limit_z = [ZLIMLOW, ZLIMHIGH]
 
 
 # Number of workers to use
 # each worker loads additional 16 image files so watch out for out of memory errors
 # ignored if zrange is None
-workers = 4
+workers = 1
 
 
 """ Code to generate the commands """
@@ -160,6 +177,20 @@ def gen_comm(zstart, zend):
 
     if offset_extents:
         cmd += ' --offset_extents'
+
+    if forced_offsets:
+        cmd += ' --forced_offsets {d[0]} {d[1]} {d[2]}'.format(
+            d=forced_offsets)
+
+    if coord_frame_x_extent:
+        cmd += ' --coord_frame_x_extent {d[0]} {d[1]}'.format(
+            d=coord_frame_x_extent)
+    if coord_frame_y_extent:
+        cmd += ' --coord_frame_y_extent {d[0]} {d[1]}'.format(
+            d=coord_frame_y_extent)
+    if coord_frame_z_extent:
+        cmd += ' --coord_frame_z_extent {d[0]} {d[1]}'.format(
+            d=coord_frame_z_extent)
 
     if source_type == 's3':
         cmd += " --s3_bucket_name {}".format(s3_bucket_name)

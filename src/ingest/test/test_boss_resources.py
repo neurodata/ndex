@@ -23,21 +23,21 @@ class TestBossResources:
             collection='ben_dev',
             experiment='dev_ingest_4',
             channel='def_files',
-            boss_config_file='neurodata.cfg')
+            boss_config_file='neurodata.cfg',
+            x_extent=[0, 1000],
+            y_extent=[0, 1024],
+            z_extent=[0, 100])
 
         ingest_job = IngestJob(args)
 
         boss_res_params = BossResParams(ingest_job, get_only=True)
+
         assert boss_res_params.coll_resource.name == args.collection
         assert boss_res_params.exp_resource.name == args.experiment
         assert boss_res_params.ch_resource.name == args.channel
         assert boss_res_params.exp_resource.hierarchy_method == 'isotropic'
-        assert ingest_job.x_extent == [0, 1000]
-        assert ingest_job.y_extent == [0, 1024]
-        assert ingest_job.z_extent == [0, 100]
         assert ingest_job.voxel_size == [1, 1, 1]
         assert ingest_job.voxel_unit == 'micrometers'
-        assert ingest_job.img_size == [1000, 1024, 100]
         assert ingest_job.offsets == [0, 0, 0]
         assert ingest_job.datatype == 'uint16'
         assert ingest_job.boss_datatype == 'uint16'
@@ -124,6 +124,80 @@ class TestBossResources:
         boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
         boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
 
+    def test_create_boss_res_forced_offsets(self):
+        now = datetime.now()
+
+        args = Namespace(
+            datasource='local',
+            collection='ben_dev',
+            experiment='dev_ingest_neg' + now.strftime("%Y%m%d-%H%M%S"),
+            channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
+            boss_config_file='neurodata.cfg',
+            voxel_size=[1, 5, 1],
+            voxel_unit='nanometers',
+            datatype='uint16',
+            res=0,
+            x_extent=[-500, 500],
+            y_extent=[0, 1024],
+            z_extent=[200, 300],
+            forced_offsets=[600, 500, 400])
+
+        ingest_job = IngestJob(args)
+        boss_res_params = BossResParams(ingest_job, get_only=False)
+
+        assert boss_res_params.coord_frame_resource.z_start == 200+400
+        assert boss_res_params.coord_frame_resource.z_stop == 300+400
+        assert boss_res_params.coord_frame_resource.x_start == -500+600
+        assert boss_res_params.coord_frame_resource.x_stop == 500+600
+
+        assert ingest_job.offsets == [600, 500, 400]
+
+        # testing to make sure offsets were recorded properly
+        exp_res = boss_res_params.exp_resource
+        boss_offsets_dict = boss_res_params.rmt.get_metadata(
+            exp_res, ['offsets'])
+        boss_offsets = ast.literal_eval(boss_offsets_dict['offsets'])
+        assert boss_offsets == [600, 500, 400]
+
+        os.remove(ingest_job.get_log_fname())
+        boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
+        boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
+
+    def test_create_boss_res_specified_coord_frame(self):
+        now = datetime.now()
+
+        args = Namespace(
+            datasource='local',
+            collection='ben_dev',
+            experiment='dev_ingest_neg' + now.strftime("%Y%m%d-%H%M%S"),
+            channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
+            boss_config_file='neurodata.cfg',
+            voxel_size=[1, 5, 1],
+            voxel_unit='nanometers',
+            datatype='uint16',
+            res=0,
+            x_extent=[100, 1100],
+            y_extent=[0, 1024],
+            z_extent=[200, 300],
+            coord_frame_x_extent=[0, 2000])
+
+        ingest_job = IngestJob(args)
+        boss_res_params = BossResParams(ingest_job, get_only=False)
+
+        assert boss_res_params.coord_frame_resource.z_start == 200
+        assert boss_res_params.coord_frame_resource.z_stop == 300
+        assert boss_res_params.coord_frame_resource.x_start == 0
+        assert boss_res_params.coord_frame_resource.x_stop == 2000
+
+        assert ingest_job.x_extent == [100, 1100]
+        assert ingest_job.y_extent == [0, 1024]
+
+        assert ingest_job.offsets == [0, 0, 0]
+
+        os.remove(ingest_job.get_log_fname())
+        boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
+        boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
+
     def test_get_boss_res_wrong_img_size(self):
         now = datetime.now()
 
@@ -160,7 +234,10 @@ class TestBossResources:
             experiment='dev_ingest_4',
             channel='def_files_annot',
             boss_config_file='neurodata.cfg',
-            source_channel='def_files'
+            source_channel='def_files',
+            x_extent=[0, 1000],
+            y_extent=[0, 1024],
+            z_extent=[0, 100]
         )
 
         ingest_job = IngestJob(args)

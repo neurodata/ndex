@@ -9,6 +9,8 @@ import sys
 import time
 from collections import defaultdict
 from datetime import datetime
+from functools import partial
+from multiprocessing.dummy import Pool as ThreadPool
 
 import numpy as np
 from PIL import Image
@@ -63,31 +65,33 @@ def post_cutout(boss_res_params, ingest_job, x_rng, y_rng, z_rng, data, attempts
         msg = '{} Error: data upload failed after multiple attempts, skipping. {}'.format(
             get_formatted_datetime(), cutout_msg)
         ingest_job.send_msg(msg, send_slack=True)
+        ingest_job.num_POST_failures += 1
         return 1
     return 0
 
 
-def download_rand_slice(boss_res_params, ingest_job, im_array_local, rand_slice):
-    im_array_boss = np.zeros(np.shape(im_array_local),
-                             dtype=type(im_array_local[0, 0]))
+def download_boss_slice(boss_res_params, ingest_job, z_slice, attempts=3):
+    im_array_boss = np.zeros([1, ingest_job.img_size[1], ingest_job.img_size[0]],
+                             dtype=ingest_job.datatype)
 
-    xM = np.shape(im_array_local)[1]
-    yM = np.shape(im_array_local)[2]
+    rmt = boss_res_params.rmt
     stride = 2048
-    attempts = 3
-    for xi in range(0, xM, stride):
-        xi_stop = xi + stride
-        if xi_stop > xM:
-            xi_stop = xM
-        for yi in range(0, yM, stride):
-            yi_stop = yi + stride
-            if yi_stop > yM:
-                yi_stop = yM
+
+    x_buckets = get_supercube_lims(ingest_job.x_extent, stride=stride)
+    y_buckets = get_supercube_lims(ingest_job.y_extent, stride=stride)
+    for _, y_slices in y_buckets.items():
+        y_rng = [y_slices[0],
+                 y_slices[-1]+1]
+        for _, x_slices in x_buckets.items():
+            x_rng = [x_slices[0],
+                     x_slices[-1]+1]
             for attempt in range(attempts):
                 try:
-                    im_array_boss[0, xi:xi_stop, yi:yi_stop] = boss_res_params.rmt.get_cutout(
-                        boss_res_params.ch_resource, ingest_job.res, [yi, yi_stop], [
-                            xi, xi_stop], [rand_slice, rand_slice + 1]
+                    im_array_boss[0, y_rng[0]-ingest_job.y_extent[0]:y_rng[1]-ingest_job.y_extent[0],
+                                  x_rng[0]-ingest_job.x_extent[0]:x_rng[-1]-ingest_job.x_extent[0]] = rmt.get_cutout(
+                        boss_res_params.ch_resource,
+                        ingest_job.res,
+                        x_rng, y_rng, [z_slice, z_slice + 1]
                     )
                 except Exception as e:
                     # attempt failed
@@ -110,35 +114,37 @@ def assert_equal(boss_res_params, ingest_job, z_rng):
     # choose a rand slice:
     rand_slice = np.random.randint(z_rng[0], z_rng[1])
 
-    # load source data (one z slice)
-    im_array_local = ingest_job.read_img_stack([rand_slice])
-
     # load data from Boss
     msg = '{} Getting random z slice from BOSS for comparison'.format(
         get_formatted_datetime())
     ingest_job.send_msg(msg)
 
-    im_array_boss = download_rand_slice(
-        boss_res_params, ingest_job, im_array_local, rand_slice + ingest_job.offsets[2])
+    im_array_boss = download_boss_slice(
+        boss_res_params, ingest_job, rand_slice + ingest_job.offsets[2])
 
     msg = '{} Z slice from BOSS downloaded'.format(
         get_formatted_datetime())
     ingest_job.send_msg(msg)
 
+    # load source data (one z slice)
+    im_array_local = ingest_job.read_img_stack([rand_slice])
+
     # assert that cutout from the boss is the same as what was sent
     if np.array_equal(im_array_boss, im_array_local):
         ingest_job.send_msg('Test slice {} in Boss matches file {}'.format(
             rand_slice, ingest_job.get_img_fname(rand_slice)))
+        return True
     else:
         ingest_job.send_msg('Test slice {} in Boss does *NOT* match file {}'.format(
             rand_slice, ingest_job.get_img_fname(rand_slice)), send_slack=True)
+        return False
 
 
-def get_supercube_lims(z_rng, stride=16):
+def get_supercube_lims(rng, stride=16):
     # stride = height of super cuboid
 
-    first = z_rng[0]    # inclusive
-    last = z_rng[1]     # exclusive
+    first = rng[0]    # inclusive
+    last = rng[1]     # exclusive
 
     buckets = defaultdict(list)
     for z in range(first, last):
@@ -151,7 +157,28 @@ def get_formatted_datetime():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def per_channel_ingest(args, channel):
+def ingest_block(x_slice_key, x_buckets, boss_res_params, ingest_job, y_rng, z_rng, im_array):
+    # created for multithreading
+    x_slices = x_buckets[x_slice_key]
+
+    x_rng = [x_slices[0], x_slices[-1] + 1]
+
+    data = im_array[:, y_rng[0]-ingest_job.y_extent[0]:y_rng[1]-ingest_job.y_extent[0],
+                    x_rng[0]-ingest_job.x_extent[0]:x_rng[1]-ingest_job.x_extent[0]]
+    data = np.asarray(data, order='C')
+
+    if np.sum(data) == 0:
+        ingest_job.send_msg('{} Block empty for Collection: {}, Experiment: {}, Channel: {} x/y/z: {}/{}/{}, skipping'.format(
+            get_formatted_datetime(),
+            ingest_job.coll_name, ingest_job.exp_name, ingest_job.ch_name, x_rng, y_rng, z_rng))
+        return
+
+    # POST each block to the BOSS
+    post_cutout(boss_res_params, ingest_job,
+                x_rng, y_rng, z_rng, data, attempts=3)
+
+
+def per_channel_ingest(args, channel, threads=8):
     args.channel = channel
     ingest_job = IngestJob(args)
 
@@ -193,28 +220,23 @@ def per_channel_ingest(args, channel):
     y_buckets = get_supercube_lims(ingest_job.y_extent, stride_y)
     z_buckets = get_supercube_lims(ingest_job.z_range, stride_z)
 
-    num_POST_failures = 0
+    pool = ThreadPool(threads)
 
     # load images files in stacks of 16 at a time into numpy array
     for _, z_slices in z_buckets.items():
         # read images into numpy array
         im_array = ingest_job.read_img_stack(z_slices)
-        z_rng = [z + ingest_job.offsets[2]
-                 for z in [z_slices[0], z_slices[-1] + 1]]
+        z_rng = [z_slices[0] - ingest_job.offsets[2],
+                 z_slices[-1] + 1 - ingest_job.offsets[2]]
 
         # slice into np array blocks
         for _, y_slices in y_buckets.items():
             y_rng = [y_slices[0], y_slices[-1] + 1]
-            for _, x_slices in x_buckets.items():
-                x_rng = [x_slices[0], x_slices[-1] + 1]
 
-                data = im_array[:, y_rng[0] + ingest_job.y_extent[0]:y_rng[1] + ingest_job.y_extent[0],
-                                x_rng[0] + ingest_job.x_extent[0]:x_rng[1] + ingest_job.x_extent[0]]
-                data = np.asarray(data, order='C')
-
-                # POST each block to the BOSS
-                num_POST_failures += post_cutout(boss_res_params, ingest_job, x_rng, y_rng, z_rng, data,
-                                                 attempts=3)
+            ingest_block_partial = partial(
+                ingest_block, x_buckets=x_buckets, boss_res_params=boss_res_params, ingest_job=ingest_job,
+                y_rng=y_rng, z_rng=z_rng, im_array=im_array)
+            pool.map(ingest_block_partial, x_buckets.keys())
 
     # checking data posted correctly for an entire z slice
     assert_equal(boss_res_params, ingest_job, ingest_job.z_range)
@@ -222,10 +244,12 @@ def per_channel_ingest(args, channel):
     ch_link = (
         'http://ndwt.neurodata.io/channel_detail/{}/{}/{}/').format(ingest_job.coll_name, ingest_job.exp_name, ingest_job.ch_name)
 
-    ingest_job.send_msg('{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\nThere were {} POST failures.\nView properties of channel and start downsample job on ndwebtools: {}'.format(
-        get_formatted_datetime(), ingest_job.z_range, ingest_job.coll_name, ingest_job.exp_name, ingest_job.ch_name, num_POST_failures, ch_link), send_slack=True)
+    ingest_job.send_msg('{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\nThere were {} read failures and {} POST failures.\nView properties of channel and start downsample job on ndwebtools: {}'.format(
+        get_formatted_datetime(),
+        ingest_job.z_range, ingest_job.coll_name, ingest_job.exp_name, ingest_job.ch_name,
+        ingest_job.num_READ_failures, ingest_job.num_POST_failures, ch_link), send_slack=True)
 
-    return num_POST_failures
+    return 0
 
 
 def main():
@@ -269,6 +293,14 @@ def main():
                         help='Volume extent in z (slices/images)')
     parser.add_argument('--offset_extents', action='store_true',
                         help='Offset any negative extents to start at zero and store the original values as BOSS metadata')
+    parser.add_argument('--forced_offsets', type=int, nargs=3,
+                        help='Offset negative extents by a certain value in x/y/z')
+    parser.add_argument('--coord_frame_x_extent', type=int, nargs=2,
+                        help='Force coordinate frame to be of a partical x extent (must contain data after any offsets)')
+    parser.add_argument('--coord_frame_y_extent', type=int, nargs=2,
+                        help='Force coordinate frame to be of a partical y extent (must contain data after any offsets)')
+    parser.add_argument('--coord_frame_z_extent', type=int, nargs=2,
+                        help='Force coordinate frame to be of a partical z extent (must contain data after any offsets)')
 
     parser.add_argument('--z_range', type=int, nargs=2,
                         help='Z slices to ingest: start (inclusive) end (exclusive)')

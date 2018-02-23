@@ -59,9 +59,12 @@ class BossResParams:
             coord_setup = CoordinateFrameResource(self.coord_frame_name)
         else:
             coord_setup = CoordinateFrameResource(self.coord_frame_name, '',
-                                                  self.ingest_job.x_extent[0], self.ingest_job.x_extent[1],
-                                                  self.ingest_job.y_extent[0], self.ingest_job.y_extent[1],
-                                                  self.ingest_job.z_extent[0], self.ingest_job.z_extent[1],
+                                                  self.ingest_job.coord_frame_x_extent[0],
+                                                  self.ingest_job.coord_frame_x_extent[1],
+                                                  self.ingest_job.coord_frame_y_extent[0],
+                                                  self.ingest_job.coord_frame_y_extent[1],
+                                                  self.ingest_job.coord_frame_z_extent[0],
+                                                  self.ingest_job.coord_frame_z_extent[1],
                                                   self.ingest_job.voxel_size[0],
                                                   self.ingest_job.voxel_size[1],
                                                   self.ingest_job.voxel_size[2],
@@ -74,15 +77,6 @@ class BossResParams:
                                           coord_frame_resource.y_voxel_size,
                                           coord_frame_resource.z_voxel_size]
             self.ingest_job.voxel_unit = coord_frame_resource.voxel_unit
-
-            # need to populate these before creating the experiment resource (for setting resolution heirarchy)
-            self.ingest_job.x_extent = [coord_frame_resource.x_start,
-                                        coord_frame_resource.x_stop]
-            self.ingest_job.y_extent = [coord_frame_resource.y_start,
-                                        coord_frame_resource.y_stop]
-            self.ingest_job.z_extent = [coord_frame_resource.z_start,
-                                        coord_frame_resource.z_stop]
-            self.ingest_job.set_img_size()
 
         return coord_frame_resource
 
@@ -98,8 +92,7 @@ class BossResParams:
             else:
                 hierarchy_method = 'anisotropic'
 
-            num_hierarchy_levels = calc_hierarchy_levels(
-                self.ingest_job.img_size)
+            num_hierarchy_levels = self.calc_hierarchy_levels()
 
             exp_setup = ExperimentResource(self.ingest_job.exp_name, self.ingest_job.coll_name, self.coord_frame_name, '',
                                            num_hierarchy_levels, hierarchy_method)
@@ -138,9 +131,12 @@ class BossResParams:
 
         return ch_resource
 
+    def calc_hierarchy_levels(self, lowest_res=512):
+        img_size = [self.coord_frame_resource.x_stop - self.coord_frame_resource.x_start,
+                    self.coord_frame_resource.y_stop - self.coord_frame_resource.y_start,
+                    self.coord_frame_resource.z_stop - self.coord_frame_resource.z_start]
 
-def calc_hierarchy_levels(img_size, lowest_res=512):
-    min_xy = min(img_size[0:1])
-    # we add one because 0 is included in the number of downsampling levels
-    num_levels = math.ceil(math.log(min_xy / lowest_res, 2)) + 1
-    return num_levels
+        min_xy = min(img_size[0:1])
+        # we add one because 0 is included in the number of downsampling levels
+        num_levels = math.ceil(math.log(min_xy / lowest_res, 2)) + 1
+        return num_levels
