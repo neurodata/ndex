@@ -26,10 +26,11 @@ CHUNK_SIZE = (2048, 2048, 16)
 
 
 class BossMeta:
-    def __init__(self, collection, experiment, channel):
+    def __init__(self, collection, experiment, channel, res=0):
         self._collection = collection
         self._experiment = experiment
         self._channel = channel
+        self._res = res
 
     def channel(self):
         return self._channel
@@ -39,6 +40,9 @@ class BossMeta:
 
     def collection(self):
         return self._collection
+
+    def res(self):
+        return self._res
 
 
 class BossRemote:
@@ -113,6 +117,11 @@ class BossRemote:
         x_rng = [coord_frame['x_start'], coord_frame['x_stop']]
         y_rng = [coord_frame['y_start'], coord_frame['y_stop']]
         z_rng = [coord_frame['z_start'], coord_frame['z_stop']]
+
+        # extents are different in x/y for downsampled data
+        x_rng, y_rng = [[round(bnd/2**self.meta.res()) for bnd in rng]
+                        for rng in [x_rng, y_rng]]
+
         return x_rng, y_rng, z_rng
 
     def cutout(self, x_rng, y_rng, z_rng, datatype, res=0, attempts=10):
@@ -204,8 +213,7 @@ def collect_args():
     parser.add_argument('--print_metadata', action='store_true',
                         help='Prints the metadata on the collection/experiment/channel and quits')
 
-    result = parser.parse_args()
-    return result
+    return parser.parse_args()
 
 
 def get_boss_config(boss_config_file):
@@ -291,7 +299,8 @@ def validate_args(result):
         print(error_msg)
         raise ValueError(error_msg)
 
-    meta = BossMeta(result.collection, result.experiment, result.channel)
+    meta = BossMeta(result.collection, result.experiment,
+                    result.channel, result.res)
     rmt = BossRemote(result.url, result.token, meta)
 
     if result.print_metadata:
@@ -323,8 +332,8 @@ def validate_args(result):
 
 
 def main():
-    result = collect_args()
-    result, rmt = validate_args(result)
+    args = collect_args()
+    result, rmt = validate_args(args)
 
     print('Starting download')
     download_slices(result, rmt)
