@@ -117,9 +117,24 @@ class BossResParams:
         if not get_only:
             ch_args.extend((self.ingest_job.ch_type, ch_description,
                             0, self.ingest_job.boss_datatype, self.ingest_job.res))
+
+            # annotation data
             if self.ingest_job.source_channel is not None:
-                # annotation data
                 ch_args.append([self.ingest_job.source_channel])
+
+                # checking to make sure source channel exists (creating if needed)
+                try:
+                    source_args = [self.ingest_job.source_channel,
+                                   self.ingest_job.coll_name, self.ingest_job.exp_name]
+                    source_setup = ChannelResource(*source_args)
+                    self.get_boss_project(source_setup, True)
+                except:
+                    self.ingest_job.send_msg(
+                        'Creating a dummy source channel for this annotation because none exists yet')
+                    source_args.extend(('image', '', 0, 'uint8', 0))
+                    source_setup = ChannelResource(*source_args)
+                    self.get_boss_project(source_setup, False)
+
         ch_setup = ChannelResource(*ch_args)
         ch_resource = self.get_boss_project(ch_setup, get_only)
 

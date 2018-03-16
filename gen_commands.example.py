@@ -86,6 +86,7 @@ data_type = 'uint16'
 # set to None for image data
 # Warning: if set to any value other than None, uploaded data will be treated as 'annotation' type
 reference_channel = None
+# reference_channel = 'empty'
 
 # pixel -/+ extent (integers) for images in x (width), y (height) and z (slices)
 # not used for render, comment out
@@ -246,7 +247,7 @@ if zrange:
                 mult = 1
             elif data_type == 'uint16':
                 mult = 2
-            elif data_type == 'uint64':
+            elif data_type == 'uint64' or data_type == 'uint32':
                 mult = 8
             mem_per_w = ddim_xy[0] * ddim_xy[1] * \
                 mult * 16 / 1024 / 1024 / 1024

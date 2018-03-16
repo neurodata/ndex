@@ -9,6 +9,8 @@ from requests import HTTPError
 from ..boss_resources import BossResParams
 from ..ingest_job import IngestJob
 
+from intern.resource.boss.resource import *
+
 BOSS_URL = 'https://api.boss.neurodata.io/latest/'
 
 
@@ -263,7 +265,7 @@ class TestBossResources:
             experiment='dev_ingest_4',
             channel='def_files_annotation_' + now.strftime("%Y%m%d-%H%M%S"),
             boss_config_file='neurodata.cfg',
-            source_channel='def_files',
+            source_channel='empty_' + now.strftime("%Y%m%d-%H%M%S"),
             voxel_size=[1, 1, 1],
             voxel_unit='micrometers',
             datatype=datatype,
@@ -284,3 +286,9 @@ class TestBossResources:
 
         os.remove(ingest_job.get_log_fname())
         boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
+
+        # removing the source channel
+        source_setup = ChannelResource(
+            args.source_channel, args.collection, args.experiment)
+        source_resource = boss_res_params.rmt.get_project(source_setup)
+        boss_res_params.rmt.delete_project(source_resource)
