@@ -212,6 +212,7 @@ def collect_args():
 
     parser.add_argument('--print_metadata', action='store_true',
                         help='Prints the metadata on the collection/experiment/channel and quits')
+    parser.add_argument('--threads', default=4, type=int, help='Number of threads for downloading data.')
 
     return parser.parse_args()
 
@@ -336,7 +337,7 @@ def main():
     result, rmt = validate_args(args)
 
     print('Starting download')
-    download_slices(result, rmt)
+    download_slices(result, rmt, threads=args.threads)
     print('Download complete')
 
 
