@@ -273,7 +273,6 @@ class IngestJob:
                 get_formatted_datetime(), img_fname)
 
             self.send_msg(msg, send_slack=True)
-            self.num_READ_failures += 1
             if self.warn_missing_files:
                 return None
             else:
@@ -347,6 +346,7 @@ class IngestJob:
             msg = '{} Problem opening file: {}'.format(
                 get_formatted_datetime(), img_fname)
             self.send_msg(msg, send_slack=True)
+            self.num_READ_failures += 1
             if self.warn_missing_files:
                 return None
             raise OSError(msg)
@@ -355,6 +355,7 @@ class IngestJob:
             msg = '{} Unknown error {}: {}'.format(
                 get_formatted_datetime(), err, img_fname)
             self.send_msg(msg, send_slack=True)
+            self.num_READ_failures += 1
             if self.warn_missing_files:
                 return None
             raise IOError(msg)
