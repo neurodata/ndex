@@ -152,7 +152,7 @@ def gen_comm(zstart, zend):
             cmd += ' --base_filename "{}"'.format(list2cmdline([file_name]))
         else:
             cmd += ' --base_path {}'.format(shlex.quote(data_directory))
-            cmd += ' --base_filename "{}"'.format(shlex.quote(file_name))
+            cmd += ' --base_filename {}'.format(shlex.quote(file_name))
         cmd += ' --extension {}'.format(file_format)
         cmd += ' --x_extent {d[0]} {d[1]}'.format(d=x_extent)
         cmd += ' --y_extent {d[0]} {d[1]}'.format(d=y_extent)
