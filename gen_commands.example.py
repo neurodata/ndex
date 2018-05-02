@@ -119,7 +119,7 @@ coord_frame_z_extent = None
 # first inclusive, last _exclusive_ list of sections to ingest for _this_ job (can be negative)
 # typically the same as Z "extent"
 # optional for render (used w/ mult. workers), requires z_extent (above)
-zrange = [0, Z]
+zrange = [0, z_extent[1]]
 # if it's a render data source, we (optionally) get the entire z range from the metadata
 # (forces single worker)
 # zrange = None

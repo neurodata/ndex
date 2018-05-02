@@ -328,15 +328,11 @@ class IngestJob:
         # called if datasource is s3 or local
         try:
             _, extension = os.path.splitext(img_fname)
-            # if it's PNG we load it with PILLOW using the user specfied datatype
+            # if it's PNG we load it with PILLOW using the user specified datatype
             if extension.lower() == '.png':
                 im = np.array(Image.open(im_obj), dtype=self.datatype)
 
-            # if it's not PNG, we try to load it using PILLOW if it's uint8 or uint16
-            elif self.datatype == 'uint8' or self.datatype == 'uint16':
-                im = np.array(Image.open(im_obj))
-
-            # if it's not uint8 or uint16, we have to use tifffile (annotation)
+            # if it's not PNG, we try to load it using tifffile
             else:
                 im = tifffile.imread(im_obj)
 
