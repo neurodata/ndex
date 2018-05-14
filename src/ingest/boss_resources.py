@@ -151,7 +151,7 @@ class BossResParams:
                     self.coord_frame_resource.y_stop - self.coord_frame_resource.y_start,
                     self.coord_frame_resource.z_stop - self.coord_frame_resource.z_start]
 
-        min_xy = min(img_size[0:1])
+        max_xy = max(img_size[0:1])
         # we add one because 0 is included in the number of downsampling levels
-        num_levels = max(1, math.ceil(math.log(min_xy / lowest_res, 2)) + 1)
+        num_levels = max(1, math.ceil(math.log(max_xy / lowest_res, 2)) + 1)
         return num_levels
