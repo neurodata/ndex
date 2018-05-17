@@ -124,11 +124,13 @@ class BossRemote:
 
         return x_rng, y_rng, z_rng
 
-    def cutout(self, x_rng, y_rng, z_rng, datatype, res=0, attempts=10):
+    def cutout(self, x_rng, y_rng, z_rng, datatype, res=0, attempts=10, iso=False):
         cutout_url_base = "{}/cutout/{}/{}/{}".format(
             BOSS_VERSION, self.meta.collection(), self.meta.experiment(), self.meta.channel())
         cutout_url = "{}/{}/{}:{}/{}:{}/{}:{}/".format(
             cutout_url_base, res, x_rng[0], x_rng[1], y_rng[0], y_rng[1], z_rng[0], z_rng[1])
+        if iso:
+            cutout_url += '?iso=True'
 
         for attempt in range(attempts):
             try:
@@ -212,7 +214,10 @@ def collect_args():
 
     parser.add_argument('--print_metadata', action='store_true',
                         help='Prints the metadata on the collection/experiment/channel and quits')
-    parser.add_argument('--threads', default=4, type=int, help='Number of threads for downloading data.')
+    parser.add_argument('--threads', default=4, type=int,
+                        help='Number of threads for downloading data.')
+    parser.add_argument('--iso', action='store_true',
+                        help='Returns iso data (for downsampling in z)')
 
     return parser.parse_args()
 
@@ -253,7 +258,8 @@ def download_slices(result, rmt, threads=4):
                     x + CHUNK_SIZE[0]) > result.x[1] else (x + CHUNK_SIZE[0])])
 
             cutout_partial = partial(
-                rmt.cutout, y_rng=y_rng, z_rng=z_rng, datatype=datatype, res=result.res)
+                rmt.cutout, y_rng=y_rng, z_rng=z_rng, datatype=datatype,
+                res=result.res, iso=result.iso)
             with ThreadPool(threads) as pool:
                 data_list = pool.map(cutout_partial, x_rngs)
 
@@ -310,6 +316,12 @@ def validate_args(result):
 
     # list of full extent in xyz
     full_range = rmt.get_xyz_extents()
+    if result.iso:
+        # need to convert to list to set new z_rng
+        full_range = list(full_range)
+        z_rng = full_range[2]  # downsampled in z
+        z_rng = [int(z/2**result.res) for z in z_rng]
+        full_range[2] = z_rng
 
     if result.full_extent:
         if any([a is not None for a in [result.x, result.y, result.z]]):
