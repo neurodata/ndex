@@ -6,27 +6,23 @@ Python 3 command line program to download data from NeuroData.  Can download a f
 
 ### From github (latest development version)
 
-1. `git clone https://github.com/neurodata/ndpull.git`
-1. `python -m venv env`
-    1. LINUX: `env/bin/activate`
-    1. WIN: `.\env\Scripts\activate` (Change permissions if on Powershell: [guide](https://virtualenv.pypa.io/en/stable/userguide/#activate-script))
-1. `cd ndpull`
-1. `pip install .`
+`pip install git+git://github.com/neurodata/ndpull.git`
 
 ## Config
 
-1. generate a [Boss API key](https://api.boss.neurodata.io/v1/mgmt/token) and save it to file named `neurodata.cfg` (example provided: [neurodata.cfg.example](neurodata.cfg.example))
+Generate a [Boss API key](https://api.boss.neurodata.io/v1/mgmt/token) and save it to file named `neurodata.cfg` (example provided: [neurodata.cfg.example](neurodata.cfg.example))
 
 ## Run
 
 ### Command line
 
-```dos
+```sh
 > ndpull --help
 usage: ndpull [-h] [--config_file CONFIG_FILE] [--token TOKEN] [--url URL]
               [--collection COLLECTION] [--experiment EXPERIMENT]
               [--channel CHANNEL] [--x X X] [--y Y Y] [--z Z Z] [--res RES]
               [--outdir OUTDIR] [--full_extent] [--print_metadata]
+              [--threads THREADS] [--iso]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -49,10 +45,14 @@ optional arguments:
   --full_extent         Use the full extent of the data on the BOSS
   --print_metadata      Prints the metadata on the
                         collection/experiment/channel and quits
+  --threads THREADS     Number of threads for downloading data.
+  --iso                 Returns iso data (for downsampling in z)
 ```
 
-```dos
-> ndpull --config_file .\neurodata.cfg --collection kharris15 --experiment apical --channel em --x 4096 4608 --y 4608 5120 --z 90 100 --outdir .
+To run
+
+```sh
+> ndpull --config_file neurodata.cfg --collection kharris15 --experiment apical --channel em --x 4096 4608 --y 4608 5120 --z 90 100 --outdir .
 ```
 
 ### Python
