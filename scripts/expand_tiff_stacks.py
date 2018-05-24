@@ -10,6 +10,8 @@ import numpy as np
 import tifffile as tiff
 from tqdm import tqdm
 
+import json
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -55,6 +57,15 @@ def expand_stack(args):
         # create RGB channel directories if they don't exist
         channels = 'r', 'g', 'b'
         [(outname / ch).mkdir(exist_ok=True) for ch in channels]
+
+    #save the metadata from the original files into the top level output directory
+    with tiff.TiffFile(str(stackfile)) as tif:
+        with outname.joinpath('metadata.json').open('w') as f:
+            tags = {}
+            for key, value in tif.pages[0].tags.items():
+                tags[key] = value.value
+
+            json.dump(tags, f, indent=4)
 
     # reads the stack into memory (seems to be unavoidable with using tifffile library)
     stack = tiff.imread(str(stackfile))
