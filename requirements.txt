@@ -9,3 +9,4 @@ tqdm>=4.19.5
 tifffile>=0.13.5
 pytest>=3.4.0
 pypng>=0.0.18
+nibabel>=2.2.1

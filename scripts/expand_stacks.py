@@ -11,6 +11,7 @@ import tifffile as tiff
 from tqdm import tqdm
 
 import json
+import nibabel as nib
 
 
 def parse_args():
@@ -18,14 +19,14 @@ def parse_args():
         description='Splits a tiff stack into separate tiff files')
 
     parser.add_argument(
-        '--tiffstack', type=str, help='Full file path of tiff stack input')
+        'tiffstack', type=str, help='Full file path of tiff stack input (positional)')
     parser.add_argument(
-        '--outpath', type=str, help='Full path for output files')
+        'outpath', nargs='?', type=str, default=None,
+        help='Full path for output files (positional)')
     parser.add_argument(
         '--datatype',
         type=str,
-        help=
-        'Cast images as a particular dtype (uint8/uint16/uint64), note that data can be lost this way'
+        help='Cast images as a particular dtype (uint8/uint16/uint64), note that data can be lost this way'
     )
     parser.add_argument(
         '--split_RGB',
@@ -35,10 +36,6 @@ def parse_args():
     #                     help='flag to scale the input datatype to the datatype specified')
 
     args = parser.parse_args()
-
-    # validate args
-    if args.tiffstack is None:
-        raise ValueError('No input file')
 
     return args
 
@@ -58,17 +55,29 @@ def expand_stack(args):
         channels = 'r', 'g', 'b'
         [(outname / ch).mkdir(exist_ok=True) for ch in channels]
 
-    #save the metadata from the original files into the top level output directory
-    with tiff.TiffFile(str(stackfile)) as tif:
-        with outname.joinpath('metadata.json').open('w') as f:
-            tags = {}
+    metadata = {}
+    if ('.tif' or '.tiff') in stackfile.suffixes:
+        # reads the stack into memory (seems to be unavoidable with using tifffile library)
+        stack = tiff.imread(str(stackfile))
+
+        # extract metadata from the original file
+        with tiff.TiffFile(str(stackfile)) as tif:
             for key, value in tif.pages[0].tags.items():
-                tags[key] = value.value
+                metadata[key] = value.value
 
-            json.dump(tags, f, indent=4)
+    elif ('.nii' or '.gz') in stackfile.suffixes:
+        img = nib.load(str(stackfile))
+        stack = np.array(img.dataobj)
+        stack = np.squeeze(stack)
 
-    # reads the stack into memory (seems to be unavoidable with using tifffile library)
-    stack = tiff.imread(str(stackfile))
+        # extract metadata
+        metadata['voxel_size'] = str(img.header.get_zooms()[0:-1])
+        metadata['datatype'] = str(img.header.get_data_dtype())
+        metadata['shape'] = str(img.header.get_data_shape())
+
+    # put metadata into the top level output directory
+    with outname.joinpath('metadata.json').open('w') as f:
+        json.dump(metadata, f, indent=4)
 
     num_slices = len(stack)
     digits = len(str(abs(num_slices)))
