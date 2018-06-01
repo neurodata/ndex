@@ -119,7 +119,7 @@ class BossRemote:
         z_rng = [coord_frame['z_start'], coord_frame['z_stop']]
 
         # extents are different in x/y for downsampled data
-        x_rng, y_rng = [[round(bnd/2**self.meta.res()) for bnd in rng]
+        x_rng, y_rng = [[round(bnd / 2**self.meta.res()) for bnd in rng]
                         for rng in [x_rng, y_rng]]
 
         return x_rng, y_rng, z_rng
@@ -170,7 +170,7 @@ def get_cube_lims(rng, stride=16):
     return buckets
 
 
-def collect_input_args(collection, experiment, channel, config_file=None, token=None, url='https://api.boss.neurodata.io', x=None, y=None, z=None, res=0, outdir='./', full_extent=False, print_metadata=False):
+def collect_input_args(collection, experiment, channel, config_file=None, token=None, url='https://api.boss.neurodata.io', x=None, y=None, z=None, res=0, outdir='./', full_extent=False, print_metadata=False, iso=False):
     result = argparse.Namespace(
         collection=collection,
         experiment=experiment,
@@ -180,7 +180,8 @@ def collect_input_args(collection, experiment, channel, config_file=None, token=
         url=url,
         x=x, y=y, z=z, res=res, outdir=outdir,
         full_extent=full_extent,
-        print_metadata=print_metadata
+        print_metadata=print_metadata,
+        iso=iso,
     )
     return result
 
@@ -320,7 +321,7 @@ def validate_args(result):
         # need to convert to list to set new z_rng
         full_range = list(full_range)
         z_rng = full_range[2]  # downsampled in z
-        z_rng = [int(z/2**result.res) for z in z_rng]
+        z_rng = [int(z / 2**result.res) for z in z_rng]
         full_range[2] = z_rng
 
     if result.full_extent:
