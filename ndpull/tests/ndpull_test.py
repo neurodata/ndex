@@ -6,7 +6,7 @@ import os
 class Testndpull():
 
     def test_print_meta(self):
-        meta = BossMeta('lee', 'lee14', 'image')
+        meta = BossMeta('lee', 'lee16', 'image')
 
         token, boss_url = get_boss_config('neurodata.cfg')
         rmt = BossRemote(boss_url, token, meta)
@@ -27,11 +27,12 @@ class Testndpull():
             z=[-1, 10],
             config_file='neurodata.cfg',
             collection='lee',
-            experiment='lee14',
+            experiment='lee16',
             channel='image',
             print_metadata=None,
             full_extent=None,
             res=0,
+            iso=False,
         )
         with pytest.raises(ValueError):
             validate_args(args)
@@ -54,7 +55,8 @@ class Testndpull():
             print_metadata=False,
             full_extent=True,
             res=res,
-            outdir='test_images/'
+            outdir='test_images/',
+            iso=False,
         )
         _, rmt = validate_args(args)
         xyz = rmt.get_xyz_extents()
@@ -73,7 +75,8 @@ class Testndpull():
             print_metadata=False,
             full_extent=True,
             res=res,
-            outdir='test_images/'
+            outdir='test_images/',
+            iso=False,
         )
         _, rmt = validate_args(args)
         xyz = rmt.get_xyz_extents()
@@ -92,7 +95,8 @@ class Testndpull():
             print_metadata=False,
             full_extent=True,
             res=res,
-            outdir='test_images/'
+            outdir='test_images/',
+            iso=False,
         )
         result, rmt = validate_args(args)
         download_slices(result, rmt)
@@ -137,11 +141,12 @@ class Testndpull():
             z=[0, 10],
             config_file='neurodata.cfg',
             collection='lee',
-            experiment='lee14',
+            experiment='lee16',
             channel='image',
             print_metadata=None,
             full_extent=None,
             res=0,
+            iso=False,
         )
         result, rmt = validate_args(args)
 
@@ -156,11 +161,12 @@ class Testndpull():
             z=[15, 22],
             config_file='neurodata.cfg',
             collection='lee',
-            experiment='lee14',
+            experiment='lee16',
             channel='image',
             print_metadata=None,
             full_extent=None,
             res=0,
+            iso=False,
         )
         datatype = 'uint8'
 
@@ -190,12 +196,13 @@ class Testndpull():
             z=[395, 412],
             config_file='neurodata.cfg',
             collection='lee',
-            experiment='lee14',
+            experiment='lee16',
             channel='image',
             print_metadata=None,
             full_extent=None,
             res=0,
-            outdir='test_images/'
+            outdir='test_images/',
+            iso=False,
         )
 
         result, rmt = validate_args(args)

@@ -8,9 +8,10 @@ import json
 import math
 import sys
 import time
+from collections import defaultdict
 from functools import partial
 from multiprocessing.dummy import Pool as ThreadPool
-from collections import defaultdict
+from pathlib import Path
 
 import blosc
 import numpy as np
@@ -278,9 +279,8 @@ def save_to_tiffs(data_slices, meta, result, z_rng):
     # save the numpy array as a tiff file
 
     # path for saving slices
-    cutout_path = result.outdir
-    if cutout_path[-1] != '/':
-        cutout_path += '/'
+    cutout_path = Path(result.outdir)
+    cutout_path.mkdir(parents=True, exist_ok=True)
 
     digits = int(math.log10(result.z[1])) + 1
 
@@ -290,7 +290,7 @@ def save_to_tiffs(data_slices, meta, result, z_rng):
             x=result.x, y=result.y, z=zslice, dig=digits)
 
         data = data_slices[zslice - z_rng[0], :, :]
-        tiff.imsave(cutout_path + fname, data,
+        tiff.imsave(str(cutout_path / fname), data,
                     metadata={'DocumentName': fname}, compress=6)
 
 
