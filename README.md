@@ -1,15 +1,17 @@
 # ndpull
 
+[![PyPI version](https://badge.fury.io/py/ndpull.svg)](https://badge.fury.io/py/ndpull) [![Build Status](https://travis-ci.org/neurodata/ndpull.svg?branch=master)](https://travis-ci.org/neurodata/ndpull)
+
 Python 3 command line program to download data from NeuroData.  Can download a full stack of data or with specific limits.  View available data at [ndwebtools](https://ndwebtools.neurodata.io/) or [neurodata.io](https://neurodata.io/)
 
 ## Install
 
-- Create a python 3 virtual environment
+- Create a python 3 [virtual environment](https://virtualenv.pypa.io/en/stable/)
 
   `virtualenv env`
 - Activate virtual environment
 - Install
-  - Install via pypi (Preferred)
+  - Via pypi (Preferred)
 
     `pip install ndpull`
   - From github (Latest dev version)
