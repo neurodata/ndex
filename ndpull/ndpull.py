@@ -6,6 +6,7 @@ import argparse
 import configparser
 import json
 import math
+import os
 import sys
 import time
 from collections import defaultdict
@@ -27,11 +28,12 @@ CHUNK_SIZE = (2048, 2048, 16)
 
 
 class BossMeta:
-    def __init__(self, collection, experiment, channel, res=0):
+    def __init__(self, collection, experiment, channel, res=0, iso=False):
         self._collection = collection
         self._experiment = experiment
         self._channel = channel
         self._res = res
+        self._iso = iso
 
     def channel(self):
         return self._channel
@@ -44,6 +46,9 @@ class BossMeta:
 
     def res(self):
         return self._res
+
+    def iso(self):
+        return self._iso
 
 
 class BossRemote:
@@ -59,13 +64,18 @@ class BossRemote:
         self.session = requests.Session()
         self.session.headers = {'Authorization': 'Token {}'.format(self.token)}
 
+        self.boss_coll_metadata = self.get_coll_metadata()
+        self.boss_exp_metadata = self.get_exp_metadata()
+        self.boss_ch_metadata = self.get_channel_metdata()
+        self.downsample_status = self.get_downsample_status()
+
     def __str__(self):
         string = 'Collection: {}, Experiment: {}, Channel: {}\n'.format(
             self.meta.collection(), self.meta.experiment(), self.meta.channel())
 
         indent_size = 2
 
-        metadata = self.get_exp_metadata()
+        metadata = self.boss_exp_metadata
         metadata_str = json.dumps(metadata, indent=indent_size)
         string += 'Experiment metadata:\n{}\n\n'.format(metadata_str)
 
@@ -73,7 +83,7 @@ class BossRemote:
         metadata_str = json.dumps(metadata, indent=indent_size)
         string += 'Coordinate frame metadata:\n{}\n\n'.format(metadata_str)
 
-        metadata = self.get_channel_metdata()
+        metadata = self.boss_ch_metadata
         metadata_str = json.dumps(metadata, indent=indent_size)
         string += 'Channel metadata:\n{}\n\n'.format(metadata_str)
 
@@ -85,6 +95,14 @@ class BossRemote:
         r = self.session.get("{}{}".format(
             self.boss_url, url), headers=headers)
         return r
+
+    def get_coll_metadata(self):
+        # https://api.theboss.io/v1/collection/:collection/
+        url = "{}/collection/{}".format(
+            BOSS_VERSION, self.meta.collection()
+        )
+        resp = self.get(url, {'Accept': 'application/json'})
+        return resp.json()
 
     def get_exp_metadata(self):
         # https://api.theboss.io/v1/collection/:collection/experiment/:experiment/
@@ -108,9 +126,16 @@ class BossRemote:
         resp = self.get(coord_frame_url, {'Accept': 'application/json'})
         return resp.json()
 
+    def get_downsample_status(self):
+        # https://api.boss.neurodata.io/v1/downsample/kristina15/image/CR1_2ndA
+        url = "{}/downsample/{}/{}/{}".format(
+            BOSS_VERSION, self.meta.collection(), self.meta.experiment(), self.meta.channel())
+        resp = self.get(url, {'Accept': 'application/json'})
+        return resp.json()
+
     def get_coord_frame_name(self, exp_data=None):
         if exp_data is None:
-            exp_data = self.get_exp_metadata()
+            exp_data = self.boss_exp_metadata
         return exp_data['coord_frame']
 
     def get_xyz_extents(self):
@@ -123,14 +148,18 @@ class BossRemote:
         x_rng, y_rng = [[round(bnd / 2**self.meta.res()) for bnd in rng]
                         for rng in [x_rng, y_rng]]
 
+        if self.meta.iso():
+            # need to convert to list to set new z_rng
+            z_rng = [int(z / 2**self.meta.res()) for z in z_rng]
+
         return x_rng, y_rng, z_rng
 
-    def cutout(self, x_rng, y_rng, z_rng, datatype, res=0, attempts=10, iso=False):
+    def cutout(self, x_rng, y_rng, z_rng, datatype, attempts=5):
         cutout_url_base = "{}/cutout/{}/{}/{}".format(
             BOSS_VERSION, self.meta.collection(), self.meta.experiment(), self.meta.channel())
         cutout_url = "{}/{}/{}:{}/{}:{}/{}:{}/".format(
-            cutout_url_base, res, x_rng[0], x_rng[1], y_rng[0], y_rng[1], z_rng[0], z_rng[1])
-        if iso:
+            cutout_url_base, self.meta.res(), x_rng[0], x_rng[1], y_rng[0], y_rng[1], z_rng[0], z_rng[1])
+        if self.meta.iso():
             cutout_url += '?iso=True'
 
         for attempt in range(attempts):
@@ -224,19 +253,26 @@ def collect_args():
     return parser.parse_args()
 
 
-def get_boss_config(boss_config_file):
+def get_boss_config(boss_config_file=None):
     config = configparser.ConfigParser()
-    config.read(boss_config_file)
-    token = config['Default']['token']
-    boss_url = ''.join(
-        (config['Default']['protocol'], '://', config['Default']['host']))
+
+    if boss_config_file:
+        config.read(boss_config_file)
+
+        token = config['Default']['token']
+        boss_url = ''.join(
+            (config['Default']['protocol'], '://', config['Default']['host']))
+
+    else:
+        token = os.environ['BOSS_TOKEN']
+        boss_url = 'https://api.boss.neurodata.io'
     return token, boss_url
 
 
 def download_slices(result, rmt, threads=4):
 
     # get the datatype
-    ch_meta = rmt.get_channel_metdata()
+    ch_meta = rmt.boss_ch_metadata
     datatype = ch_meta['datatype']
 
     z_buckets = get_cube_lims(result.z, stride=CHUNK_SIZE[2])
@@ -260,12 +296,10 @@ def download_slices(result, rmt, threads=4):
                     x + CHUNK_SIZE[0]) > result.x[1] else (x + CHUNK_SIZE[0])])
 
             cutout_partial = partial(
-                rmt.cutout, y_rng=y_rng, z_rng=z_rng, datatype=datatype,
-                res=result.res, iso=result.iso)
+                rmt.cutout, y_rng=y_rng, z_rng=z_rng, datatype=datatype)
             with ThreadPool(threads) as pool:
                 data_list = pool.map(cutout_partial, x_rngs)
 
-            # data = rmt.cutout(x_rng, y_rng, z_rng, datatype, result.res)
             for data, x_rng in zip(data_list, x_rngs):
                 # insert into numpy array
                 data_slices[:,
@@ -300,29 +334,29 @@ def save_to_tiffs(data_slices, meta, result, z_rng):
 
 def validate_args(result):
     # get tokens from config file if set as an option
-    if result.config_file:
-        result.token, result.url = get_boss_config(result.config_file)
+    result.token, result.url = get_boss_config(result.config_file)
     if result.token is None:
         error_msg = 'Need token or config file'
         print(error_msg)
         raise ValueError(error_msg)
 
     meta = BossMeta(result.collection, result.experiment,
-                    result.channel, result.res)
+                    result.channel, result.res, result.iso)
     rmt = BossRemote(result.url, result.token, meta)
 
     if result.print_metadata:
         print(rmt)
         sys.exit()
 
+    if meta.res() > 0:
+        if meta.res() >= rmt.boss_exp_metadata['num_hierarchy_levels']:
+            raise ValueError('Res argument too high for experiment')
+
+        if rmt.downsample_status['status'] != 'DOWNSAMPLED':
+            raise ValueError('Experiment not downsampled')
+
     # list of full extent in xyz
     full_range = rmt.get_xyz_extents()
-    if result.iso:
-        # need to convert to list to set new z_rng
-        full_range = list(full_range)
-        z_rng = full_range[2]  # downsampled in z
-        z_rng = [int(z / 2**result.res) for z in z_rng]
-        full_range[2] = z_rng
 
     if result.full_extent:
         if any([a is not None for a in [result.x, result.y, result.z]]):

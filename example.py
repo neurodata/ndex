@@ -7,6 +7,11 @@ channel = 'em'
 # see neurodata.cfg.example to generate your own
 config_file = 'neurodata.cfg'
 
+# download slices with these limits:
+x = [4096, 4608]
+y = [4608, 5120]
+z = [90, 100]
+
 # print metadata
 meta = ndpull.BossMeta(collection, experiment, channel)
 token, boss_url = ndpull.get_boss_config(config_file)
@@ -17,11 +22,6 @@ result, rmt = ndpull.validate_args(args)
 
 rmt = ndpull.BossRemote(boss_url, token, meta)
 print(rmt)  # prints metadata
-
-# download slices with these limits:
-x = [4096, 4608]
-y = [4608, 5120]
-z = [90, 100]
 
 # downloads the data
 ndpull.download_slices(result, rmt)
