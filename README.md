@@ -4,9 +4,17 @@ Python 3 command line program to download data from NeuroData.  Can download a f
 
 ## Install
 
-### From github (latest development version)
+- Create a python 3 virtual environment
 
-`pip install git+git://github.com/neurodata/ndpull.git`
+  `virtualenv env`
+- Activate virtual environment
+- Install
+  - Install via pypi (Preferred)
+
+    `pip install ndpull`
+  - From github (Latest dev version)
+
+    `pip install git+git://github.com/neurodata/ndpull.git`
 
 ## Config
 
