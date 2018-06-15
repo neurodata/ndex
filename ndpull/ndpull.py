@@ -250,7 +250,7 @@ def collect_args():
     parser.add_argument('--iso', action='store_true',
                         help='Returns iso data (for downsampling in z)')
 
-    parser.add_argument('--stack_filename', stype=str,
+    parser.add_argument('--stack_filename', type=str,
                         help='If specified, tiffs are merged into a single tif stack file, at the outdir specified')
 
     return parser.parse_args()
