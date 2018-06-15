@@ -267,3 +267,33 @@ class Testndpull():
 
             os.remove('test_images/{}.tif'.format(z))
             os.remove(fname)
+
+    def test_stack_gen(self):
+
+        args = argparse.Namespace(
+            x=[0, 512],
+            y=[500, 600],
+            z=[15, 22],
+            config_file=None,
+            collection='Zbrain',
+            experiment='Zbrain',
+            channel='Anti_5HT_MeanOf40',
+            print_metadata=None,
+            full_extent=None,
+            res=0,
+            iso=False,
+            outdir='test_images/',
+
+            stack_filename='stackfile_test.tif',
+        )
+        result, rmt = validate_args(args)
+        download_slices(result, rmt)
+        save_to_stack(rmt.meta, result)
+
+        stack_fname = Path(result.outdir, result.stack_filename)
+
+        # test to see if it's the same # of pages
+        with tiff.TiffFile(str(stack_fname)) as tif:
+            assert len(tif.pages) == result.z[1]-result.z[0]
+
+        stack_fname.unlink()

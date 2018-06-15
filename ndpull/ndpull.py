@@ -250,6 +250,9 @@ def collect_args():
     parser.add_argument('--iso', action='store_true',
                         help='Returns iso data (for downsampling in z)')
 
+    parser.add_argument('--stack_filename', stype=str,
+                        help='If specified, tiffs are merged into a single tif stack file, at the outdir specified')
+
     return parser.parse_args()
 
 
@@ -309,6 +312,14 @@ def download_slices(result, rmt, threads=4):
         save_to_tiffs(data_slices, rmt.meta, result, z_rng)
 
 
+def gen_tif_fname(meta, result, zslice, digits):
+    file_format = '{}_{}_{}_x{x[0]}-{x[1]}_y{y[0]}-{y[1]}_z{z:0{dig}d}.tif'
+    fname = file_format.format(
+        meta.collection(), meta.experiment(), meta.channel(),
+        x=result.x, y=result.y, z=zslice, dig=digits)
+    return fname
+
+
 def save_to_tiffs(data_slices, meta, result, z_rng):
     # save the numpy array as a tiff file
 
@@ -319,14 +330,32 @@ def save_to_tiffs(data_slices, meta, result, z_rng):
     digits = int(math.log10(result.z[1])) + 1
 
     for zslice in range(z_rng[0], z_rng[1]):
-        fname = '{}_{}_{}_x{x[0]}-{x[1]}_y{y[0]}-{y[1]}_z{z:0{dig}d}.tif'.format(
-            meta.collection(), meta.experiment(), meta.channel(),
-            x=result.x, y=result.y, z=zslice, dig=digits)
+        fname = gen_tif_fname(meta, result, zslice, digits)
 
         data = data_slices[zslice - z_rng[0], :, :]
         tiff.imsave(str(cutout_path / fname), data,
                     metadata={'DocumentName': fname}, compress=6)
 
+
+def save_to_stack(meta, result):
+    # save the extracted slices to a single tiff stack
+
+    cutout_path = Path(result.outdir)
+
+    stack_fname = Path(cutout_path, result.stack_filename)
+
+    digits = int(math.log10(result.z[1])) + 1
+
+    try:
+        stack_fname.unlink()
+    except OSError:
+        pass
+    for zslice in range(result.z[0], result.z[-1]):
+        img_fname = gen_tif_fname(meta, result, zslice, digits)
+
+        I = tiff.imread(str(cutout_path / img_fname))
+        tiff.imsave(str(stack_fname), I, append=True)
+        Path(cutout_path / img_fname).unlink()
 
 # to add:
 # tracking of amount of data requests (with default limit, so it can stop if it passes a threshold)
@@ -386,6 +415,9 @@ def main():
     print('Starting download')
     download_slices(result, rmt, threads=args.threads)
     print('Download complete')
+
+    if result.stack_filename:
+        save_to_stack(rmt.meta, result)
 
 
 if __name__ == '__main__':

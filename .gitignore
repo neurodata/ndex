@@ -102,3 +102,4 @@ ENV/
 .vscode/*
 neurodata.cfg
 .pytest_cache/*
+pytest.ini
