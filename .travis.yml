@@ -4,8 +4,9 @@ python:
 - '3.6'
 install:
 - pip install .
+- pip install coveralls pytest-cov
 script:
-- pytest
+- pytest --cov=ndpull
 after_success: coveralls
 env:
   matrix:

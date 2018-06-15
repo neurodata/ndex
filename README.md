@@ -1,6 +1,6 @@
 # ndpull
 
-[![PyPI version](https://badge.fury.io/py/ndpull.svg)](https://badge.fury.io/py/ndpull) [![Build Status](https://travis-ci.org/neurodata/ndpull.svg?branch=master)](https://travis-ci.org/neurodata/ndpull)
+[![PyPI version](https://badge.fury.io/py/ndpull.svg)](https://badge.fury.io/py/ndpull) [![Build Status](https://travis-ci.org/neurodata/ndpull.svg?branch=master)](https://travis-ci.org/neurodata/ndpull) [![Coverage Status](https://coveralls.io/repos/github/neurodata/ndpull/badge.svg?branch=master)](https://coveralls.io/github/neurodata/ndpull?branch=master)
 
 Python 3 command line program to download data from NeuroData.  Can download a full stack of data or with specific limits.  View available data at [ndwebtools](https://ndwebtools.neurodata.io/) or [neurodata.io](https://neurodata.io/)
 
