@@ -2,9 +2,10 @@ language: python
 python:
 - '3.5'
 - '3.6'
+- '3.7-dev'
 install:
 - pip install .
-- pip install coveralls pytest-cov
+- pip install coveralls pytest pytest-cov
 script:
 - pytest --cov=ndpull
 after_success: coveralls
