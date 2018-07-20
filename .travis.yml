@@ -1,14 +1,21 @@
+sudo: required
+dist: xenial
 language: python
-python:
-- '3.5'
-- '3.6'
-- '3.7-dev'
+cache: pip
 install:
-- pip install .
 - pip install coveralls pytest pytest-cov
+- pip install .
 script:
 - pytest --cov=ndpull
 after_success: coveralls
+notifications:
+  on_success: change
+  on_failure: always
 env:
   matrix:
     secure: WHSaEYQ4JIxCHwFlBe8yJrpnMjAMOS8a1IvR66YHa3RvjVDRIt59cDspLV0FZuTG/jUN34WZyohs7KQkHHC+eeiUwm12d8mJo2GOWQ/XS3+5avCSlrM++WEzvx+YZ3zqId4Tc7aE91DMDIkfM/4jaXtpWlQQtzX4BnfAjCoeq0tJfE17aGigEsC95U10Plpah5dfpbNpWEJUU9KOXodMwRUS5lzCNigB2L7YmBJTz5QvgQ7ZAj4LJEv2WWaQc4aAiXILvWQqbucC13u9NVE2JGvEiyLkeaVVPR6/+/vprmEt7d69S4i+KzeJnRn3qXfJ+GPhU8+fkDwgd0X3nK31eHd4opP1coKzC9DfQ6dbRnnoWnDmT7uN/sQdtDHmMOerasyNowAJ52aIX9/4z9VfHo7cZswgGna9Hq+yUCeggnUjnDdrhk3J4b/Rf4O4jwtqaINCf56fvbN8vkB4mcs06O0Qm4oVsfm5iltOV53/sLOF1eTSgYVyqwvbXRIjFDfv7N65z2yXAxK2L0KSFbSXYuTc9QWqGN4O6/Nm/jhUQ0hWaG52k4QjqxJyyVJ6o25lQ//Vh4BOT9/sGoCTXWj3VI4/uptTFxNHu1YAjXKnvEtE7+AxHIniybl5LHljAucNzy4Ynqj1JK5nJxymlbiBmO/nvyo7y5fxi/uxEfW5X0s=
+matrix:
+  include:
+    - python: 3.5
+    - python: 3.6
+    - python: 3.7
