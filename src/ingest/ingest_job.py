@@ -331,10 +331,14 @@ class IngestJob:
             # if it's PNG we load it with PILLOW using the user specified datatype
             if extension.lower() == '.png':
                 im = np.array(Image.open(im_obj), dtype=self.datatype)
-
-            # if it's not PNG, we try to load it using tifffile
+            
+            # if it is ome, load with appropriate kwarg
+            elif extension.lower() == '.ome':
+                im = tifffile.imread(im_obj, is_ome=True)
+            # if it's not ome, avoid loading ome metadata
+            # bug fix sometimes for .ome.tif files
             else:
-                im = tifffile.imread(im_obj)
+                im = tifffile.imread(im_obj, is_ome=False)
 
             return im
 
