@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from ....parse_log import *
+from ndex.ndpush.parse_log import *
 
 
 class TestParseLog:

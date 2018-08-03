@@ -30,8 +30,13 @@ def create_img_file(x_size, y_size, dtype, file_format, img_fname, intensity_ran
 def gen_images(ingest_job, intensity_range=None):
     for z in range(ingest_job.z_range[0], ingest_job.z_range[1], ingest_job.z_step):
         img_fname = ingest_job.get_img_fname(z)
-        create_img_file(ingest_job.img_size[0], ingest_job.img_size[1],
-                        ingest_job.datatype, ingest_job.extension, img_fname, intensity_range)
+        img_size = ingest_job.img_size
+        if img_size is None:
+            img_size = [ingest_job.x_extent[1],
+                        ingest_job.y_extent[1],
+                        ingest_job.z_extent[1]]
+        create_img_file(img_size[0], img_size[1], ingest_job.datatype,
+                        ingest_job.extension, img_fname, intensity_range)
 
 
 def del_test_images(ingest_job):

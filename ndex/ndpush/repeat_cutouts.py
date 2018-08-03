@@ -4,16 +4,10 @@ from argparse import Namespace
 
 import numpy as np
 
-try:
-    from src.ingest.boss_resources import BossResParams
-    from src.ingest.ingest_job import IngestJob
-    from ingest_large_vol import post_cutout
-    from parse_log import parse_log
-except ImportError:
-    from .src.ingest.boss_resources import BossResParams
-    from .src.ingest.ingest_job import IngestJob
-    from .ingest_large_vol import post_cutout
-    from .parse_log import parse_log
+from ndex.ndpush.boss_resources import BossResParams
+from ndex.ndpush.ingest_job import IngestJob
+from ndex.ndpush.ingest_large_vol import post_cutout
+from ndex.ndpush.parse_log import parse_log
 
 
 class Cutout:
@@ -115,6 +109,10 @@ def ingest_cuts(cutouts, ingest_job, boss_res_params):
     exp = ingest_job.exp_name
     ch = ingest_job.ch_name
 
+    ingest_job.img_size = [ingest_job.x_extent[1],
+                           ingest_job.y_extent[1],
+                           ingest_job.z_extent[1]]
+
     # sort by z, y, x...
     cutouts.sort(key=lambda c: (c.z, c.y, c.x))
 
@@ -181,6 +179,7 @@ def iterate_posting_cutouts(cutouts):
                     args.collection = coll
                     args.experiment = exp
                     args.channel = ch
+                    args.get_extents = True
 
                     ingest_job = IngestJob(args)
                     # we get these things from the resources that already exist on the boss:

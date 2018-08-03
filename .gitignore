@@ -116,3 +116,5 @@ repeat_cutouts*.txt
 .vscode
 neurodata.cfg
 slack_token
+
+local_img_test_data

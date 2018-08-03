@@ -16,10 +16,7 @@ import tifffile
 from PIL import Image
 from slacker import Slacker
 
-try:
-    from render_resource import renderResource
-except ImportError:
-    from .render_resource import renderResource
+from ndex.ndpush.render_resource import renderResource
 
 
 class IngestJob:
@@ -116,6 +113,7 @@ class IngestJob:
         self.coord_frame_y_extent = args.get('coord_frame_y_extent')
         self.coord_frame_z_extent = args.get('coord_frame_z_extent')
         self.set_coord_frame_extents()
+        self.get_extents = args.get('get_extents')
         self.validate_coord_frames()
 
         # creating the slack session
@@ -159,31 +157,39 @@ class IngestJob:
                          self.coord_frame_z_extent]
         extents = [self.x_extent, self.y_extent, self.z_extent]
 
-        if None in extents or None in coord_extents:
+        if (None in extents or None in coord_extents) and (self.get_extents is False):
             raise ValueError
 
-        for coord, ext in zip(coord_extents, extents):
-            if coord[0] > ext[0] or coord[1] < ext[1]:
-                raise ValueError
+        if self.get_extents is False:
+            for coord, ext in zip(coord_extents, extents):
+                if coord[0] > ext[0] or coord[1] < ext[1]:
+                    raise ValueError
 
     def create_slack_session(self, slack_token_file):
-        if slack_token_file is None:
-            return None
-
         if self.slack_usr is None:
             self.send_msg(
                 'Slack user not specified, Slack messages will not be sent')
             return None
 
-        # generate token here: https://api.slack.com/custom-integrations/legacy-tokens, put in file in same directory -> "slack_token"
-        try:
-            with open(slack_token_file, 'r') as s:
-                token = s.readline().split("\n")
-            return Slacker(token[0])
-        except FileNotFoundError:
-            self.send_msg('Slack token file not found: {}, create slack_token file for sending Slack messages'.format(
-                slack_token_file))
-            return None
+        if slack_token_file:
+            # generate token here: https://api.slack.com/custom-integrations/legacy-tokens, put in file in same directory -> "slack_token"
+            try:
+                with open(slack_token_file, 'r') as s:
+                    token = s.readline().split("\n")
+                    token = token[0]
+            except FileNotFoundError:
+                self.send_msg('Slack token file not found: {}, create slack_token file for sending Slack messages'.format(
+                    slack_token_file))
+                return None
+        else:
+            # attempt to load from environment variable
+            try:
+                token = os.environ['SLACK_TOKEN']
+            except Exception as e:
+                print(e)
+                return None
+
+        return Slacker(token)
 
     def create_s3_res(self, aws_profile='default'):
         # initiating the S3 resource:
@@ -331,7 +337,7 @@ class IngestJob:
             # if it's PNG we load it with PILLOW using the user specified datatype
             if extension.lower() == '.png':
                 im = np.array(Image.open(im_obj), dtype=self.datatype)
-            
+
             # if it is ome, load with appropriate kwarg
             elif extension.lower() == '.ome':
                 im = tifffile.imread(im_obj, is_ome=True)

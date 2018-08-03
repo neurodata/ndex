@@ -1,12 +1,16 @@
-from ndpull.ndpull import *
-
 import os
+
+import blosc
+import pytest
+
+from ndex.ndpull.boss_resources import *
+from ndex.ndpull.ndpull import *
 
 
 class Testndpull():
 
     def test_print_meta(self):
-        meta = BossMeta('Zbrain', 'Zbrain', 'Anti_5HT_MeanOf40')
+        meta = BossMeta('ZBrain', 'ZBrain', 'Anti_5HT_MeanOf40')
 
         token, boss_url = get_boss_config()
         rmt = BossRemote(boss_url, token, meta)
@@ -18,8 +22,8 @@ class Testndpull():
             y=[500, 1000],
             z=[-1, 10],
             config_file=None,
-            collection='Zbrain',
-            experiment='Zbrain',
+            collection='ZBrain',
+            experiment='ZBrain',
             channel='Anti_5HT_MeanOf40',
             print_metadata=None,
             full_extent=None,
@@ -31,15 +35,15 @@ class Testndpull():
 
     def test_resolution_set(self):
         res = 4
-        boss_meta = BossMeta('Zbrain', 'Zbrain', 'Anti_5HT_MeanOf40', res)
+        boss_meta = BossMeta('ZBrain', 'ZBrain', 'Anti_5HT_MeanOf40', res)
         assert boss_meta.res() == res
 
     def test_resolution_too_high(self):
         res = 5
         args = argparse.Namespace(
             config_file=None,
-            collection='Zbrain',
-            experiment='Zbrain',
+            collection='ZBrain',
+            experiment='ZBrain',
             channel='Anti_5HT_MeanOf40',
             print_metadata=None,
             full_extent=True,
@@ -56,8 +60,8 @@ class Testndpull():
             y=None,
             z=None,
             config_file=None,
-            collection='Zbrain',
-            experiment='Zbrain',
+            collection='ZBrain',
+            experiment='ZBrain',
             channel='Anti_5HT_MeanOf40',
             print_metadata=False,
             full_extent=True,
@@ -76,8 +80,8 @@ class Testndpull():
             y=None,
             z=None,
             config_file=None,
-            collection='Zbrain',
-            experiment='Zbrain',
+            collection='ZBrain',
+            experiment='ZBrain',
             channel='Anti_5HT_MeanOf40',
             print_metadata=False,
             full_extent=True,
@@ -96,8 +100,8 @@ class Testndpull():
             y=None,
             z=None,
             config_file=None,
-            collection='Zbrain',
-            experiment='Zbrain',
+            collection='ZBrain',
+            experiment='ZBrain',
             channel='Anti_5HT_MeanOf40',
             print_metadata=False,
             full_extent=True,
@@ -116,14 +120,15 @@ class Testndpull():
             y=None,
             z=None,
             config_file=None,
-            collection='Zbrain',
-            experiment='Zbrain',
+            collection='ZBrain',
+            experiment='ZBrain',
             channel='Anti_5HT_MeanOf40',
             print_metadata=False,
             full_extent=True,
             res=res,
             outdir='test_images/',
             iso=False,
+            force_datatype=False
         )
         result, rmt = validate_args(args)
         download_slices(result, rmt)
@@ -167,8 +172,8 @@ class Testndpull():
             y=[500, 600],
             z=[0, 10],
             config_file=None,
-            collection='Zbrain',
-            experiment='Zbrain',
+            collection='ZBrain',
+            experiment='ZBrain',
             channel='Anti_5HT_MeanOf40',
             print_metadata=None,
             full_extent=None,
@@ -187,8 +192,8 @@ class Testndpull():
             y=[500, 600],
             z=[15, 22],
             config_file=None,
-            collection='Zbrain',
-            experiment='Zbrain',
+            collection='ZBrain',
+            experiment='ZBrain',
             channel='Anti_5HT_MeanOf40',
             print_metadata=None,
             full_extent=None,
@@ -230,6 +235,7 @@ class Testndpull():
             res=0,
             outdir='test_images/',
             iso=False,
+            force_datatype=False,
         )
 
         result, rmt = validate_args(args)
@@ -275,8 +281,8 @@ class Testndpull():
             y=[500, 600],
             z=[15, 22],
             config_file=None,
-            collection='Zbrain',
-            experiment='Zbrain',
+            collection='ZBrain',
+            experiment='ZBrain',
             channel='Anti_5HT_MeanOf40',
             print_metadata=None,
             full_extent=None,
@@ -285,6 +291,7 @@ class Testndpull():
             outdir='test_images/',
 
             stack_filename='stackfile_test.tif',
+            force_datatype=False,
         )
         result, rmt = validate_args(args)
         download_slices(result, rmt)

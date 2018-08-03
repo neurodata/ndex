@@ -4,10 +4,10 @@ from argparse import Namespace
 import numpy as np
 import pytest
 
-from ....repeat_cutouts import Cutout, ingest_cuts, parse_cut_line
-from ..boss_resources import BossResParams
-from ..ingest_job import IngestJob
-from .create_images import del_test_images, gen_images
+from ndex.ndpush.repeat_cutouts import Cutout, ingest_cuts, parse_cut_line
+from ndex.ndpush.boss_resources import BossResParams
+from ndex.ndpush.ingest_job import IngestJob
+from create_images import del_test_images, gen_images
 
 
 class TestRepeatCutouts:
@@ -45,7 +45,8 @@ class TestRepeatCutouts:
             extension=extension,
             z_range=[0, 16],
             z_step=z_step,
-            warn_missing_files=True
+            warn_missing_files=True,
+            get_extents=True,
         )
         ingest_job = IngestJob(args)
         boss_res_params = BossResParams(ingest_job, get_only=True)
@@ -75,7 +76,8 @@ class TestRepeatCutouts:
             extension=extension,
             z_range=[0, 16],
             z_step=z_step,
-            warn_missing_files=True
+            warn_missing_files=True,
+            get_extents=True,
         )
 
         ingest_job = IngestJob(args)
@@ -116,7 +118,7 @@ def create_local_ingest_params():
     source_type = 'local'
     s3_bucket_name = None
     aws_profile = None
-    boss_config_file = 'neurodata.cfg'
+    boss_config_file = None
     data_directory = 'local_img_test_data\\'
     file_name_pattern = 'img_<p:4>'
     img_format = 'tif'

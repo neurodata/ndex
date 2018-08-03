@@ -5,7 +5,7 @@ import pytest
 import requests
 from PIL import Image
 
-from ..render_resource import renderResource
+from ndex.ndpush.render_resource import renderResource
 
 
 class TestRenderResource:

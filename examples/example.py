@@ -4,7 +4,7 @@ collection = 'kharris15'
 experiment = 'apical'
 channel = 'em'
 
-# see neurodata.cfg.example to generate your own
+# see examples/neurodata.cfg.example to generate your own
 config_file = 'neurodata.cfg'
 
 # download slices with these limits:

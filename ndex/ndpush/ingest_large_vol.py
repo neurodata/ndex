@@ -15,14 +15,8 @@ from multiprocessing.dummy import Pool as ThreadPool
 import numpy as np
 from PIL import Image
 
-try:
-    # for command line usage
-    from src.ingest.boss_resources import BossResParams
-    from src.ingest.ingest_job import IngestJob
-except ImportError:
-    # for imports from tests
-    from .src.ingest.boss_resources import BossResParams
-    from .src.ingest.ingest_job import IngestJob
+from ndex.ndpush.boss_resources import BossResParams
+from ndex.ndpush.ingest_job import IngestJob
 
 Image.MAX_IMAGE_PIXELS = None
 

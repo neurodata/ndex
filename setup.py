@@ -2,7 +2,7 @@ import os
 
 from setuptools import find_packages, setup
 
-import ndpull
+import ndex
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -12,10 +12,10 @@ with open(os.path.join(here, 'requirements.txt'), encoding='utf-8') as f:
 
 install_requires = [x.strip() for x in all_reqs if 'git+' not in x]
 
-setup(name='ndpull',
-      version=ndpull.version,
+setup(name='ndex',
+      version=ndex.version,
       description='Python 3 program to download data from NeuroData',
-      url='https://github.com/neurodata/ndpull',
+      url='https://github.com/neurodata/ndex',
       author='Benjamin Falk',
       author_email='falk.ben@jhu.edu',
       license='Apache 2.0',
@@ -36,5 +36,6 @@ setup(name='ndpull',
       ],
       zip_safe=False,
       entry_points={'console_scripts':
-                    ['ndpull=ndpull.ndpull:main'], },
+                    ['ndpull=ndex.ndpull:main',
+                     'ndpush=ndex.ndpush:main'], },
       )

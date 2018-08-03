@@ -8,11 +8,11 @@ from functools import partial
 import numpy as np
 import pytest
 
-from ....ingest_large_vol import (per_channel_ingest, post_cutout, read_channel_names,
-                                  assert_equal, ingest_block, get_supercube_lims, download_boss_slice)
-from ..boss_resources import BossResParams
-from ..ingest_job import IngestJob
-from .create_images import del_test_images, gen_images
+from ndex.ndpush.ingest_large_vol import (per_channel_ingest, post_cutout, read_channel_names,
+                                          assert_equal, ingest_block, get_supercube_lims, download_boss_slice)
+from ndex.ndpush.boss_resources import BossResParams
+from ndex.ndpush.ingest_job import IngestJob
+from create_images import del_test_images, gen_images
 
 
 class TestIngestLargeVol:
@@ -21,7 +21,7 @@ class TestIngestLargeVol:
         self.args = Namespace(datasource='local',
                               base_filename='img_<ch>_<p:4>',
                               base_path='local_img_test_data\\',
-                              boss_config_file='neurodata.cfg',
+                              boss_config_file=None,
                               collection='ben_dev',
                               experiment='dev_ingest_4',
                               x_extent=[0, 1000],
@@ -109,12 +109,12 @@ class TestIngestLargeVol:
 
         self.args.experiment = 'dev_ingest_larger' + now
         self.args.channel = 'def_files' + now
-        self.args.x_extent = [0, 8*1024]
+        self.args.x_extent = [0, 8 * 1024]
         self.args.z_range = [0, 16]
         self.args.datatype = 'uint16'
         self.args.extension = 'tif'
 
-        x_size = 8*1024
+        x_size = 8 * 1024
         y_size = 1024
 
         stride_x = 1024
@@ -228,14 +228,14 @@ class TestIngestLargeVol:
         os.remove(ingest_job.get_log_fname())
 
     def test_read_channel_names(self):
-        channels_path = 'channels.example.txt'
+        channels_path = 'tests/channels.test.txt'
         channels = read_channel_names(channels_path)
 
         valid_channels = ['Channel1', 'Channel0']
         assert valid_channels == channels
 
     def test_read_channel_names_no_channel_file(self):
-        channels_path = 'channels.example_not_found.txt'
+        channels_path = 'tests/channels.not_found.txt'
 
         with pytest.raises(FileNotFoundError):
             read_channel_names(channels_path)
@@ -243,7 +243,7 @@ class TestIngestLargeVol:
     def test_per_channel_ingest(self):
         self.args.datatype = 'uint16'
         self.args.extension = 'tif'
-        self.args.channels_list_file = 'channels.example.txt'
+        self.args.channels_list_file = 'tests/channels.test.txt'
 
         channels = read_channel_names(self.args.channels_list_file)
 
@@ -284,7 +284,7 @@ class TestIngestLargeVol:
         self.args.channel = 'def_files'
         self.args.x_extent = [-1000, 0]
         self.args.offset_extents = False
-        self.args.channels_list_file = 'channels.example.txt'
+        self.args.channels_list_file = 'tests/channels.test.txt'
 
         channels = read_channel_names(self.args.channels_list_file)
 
@@ -308,7 +308,7 @@ class TestIngestLargeVol:
         self.args.x_extent = [-1000, 0]
         self.args.offset_extents = True
         self.args.extension = 'png'
-        self.args.channels_list_file = 'channels.example.txt'
+        self.args.channels_list_file = 'tests/channels.test.txt'
 
         channels = read_channel_names(self.args.channels_list_file)
 
@@ -371,101 +371,101 @@ class TestIngestLargeVol:
             result = per_channel_ingest(args, channel)
             assert result == 0
 
-    def test_ingest_render_stack(self):
-        now = datetime.now()
+    # def test_ingest_render_stack(self):
+    #     now = datetime.now()
 
-        self.args.datasource = 'render'
-        self.args.experiment = 'test_render_' + now.strftime("%Y%m%d-%H%M%S")
-        self.args.channel = 'image_test_' + now.strftime("%Y%m%d-%H%M%S")
-        self.args.datatype = 'uint8'
-        self.args.render_owner = '6_ribbon_experiments'
-        self.args.render_project = 'M321160_Ai139_smallvol'
-        self.args.render_stack = 'Median_1_Gephyrin'
-        self.args.render_baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
-        self.args.create_resources = True
+    #     self.args.datasource = 'render'
+    #     self.args.experiment = 'test_render_' + now.strftime("%Y%m%d-%H%M%S")
+    #     self.args.channel = 'image_test_' + now.strftime("%Y%m%d-%H%M%S")
+    #     self.args.datatype = 'uint8'
+    #     self.args.render_owner = '6_ribbon_experiments'
+    #     self.args.render_project = 'M321160_Ai139_smallvol'
+    #     self.args.render_stack = 'Median_1_Gephyrin'
+    #     self.args.render_baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
+    #     self.args.create_resources = True
 
-        channel = self.args.channel
-        result = per_channel_ingest(self.args, channel)
-        assert result == 0
+    #     channel = self.args.channel
+    #     result = per_channel_ingest(self.args, channel)
+    #     assert result == 0
 
-        self.args.create_resources = False
-        result = per_channel_ingest(self.args, channel)
-        assert result == 0
+    #     self.args.create_resources = False
+    #     result = per_channel_ingest(self.args, channel)
+    #     assert result == 0
 
-        # cleanup
-        ingest_job = IngestJob(self.args)
-        boss_res_params = BossResParams(ingest_job, get_only=True)
-        boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
-        boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
-        os.remove(ingest_job.get_log_fname())
+    #     # cleanup
+    #     ingest_job = IngestJob(self.args)
+    #     boss_res_params = BossResParams(ingest_job, get_only=True)
+    #     boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
+    #     boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
+    #     os.remove(ingest_job.get_log_fname())
 
-    def test_ingest_render_stack_uint16(self):
-        now = datetime.now()
+    # def test_ingest_render_stack_uint16(self):
+    #     now = datetime.now()
 
-        self.args.datasource = 'render'
-        self.args.experiment = 'test_render_' + now.strftime("%Y%m%d-%H%M%S")
-        self.args.channel = 'image_test_' + now.strftime("%Y%m%d-%H%M%S")
-        self.args.datatype = 'uint16'
-        self.args.render_owner = '6_ribbon_experiments'
-        self.args.render_project = 'M321160_Ai139_smallvol'
-        self.args.render_stack = 'Median_1_Gephyrin'
-        self.args.render_baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
+    #     self.args.datasource = 'render'
+    #     self.args.experiment = 'test_render_' + now.strftime("%Y%m%d-%H%M%S")
+    #     self.args.channel = 'image_test_' + now.strftime("%Y%m%d-%H%M%S")
+    #     self.args.datatype = 'uint16'
+    #     self.args.render_owner = '6_ribbon_experiments'
+    #     self.args.render_project = 'M321160_Ai139_smallvol'
+    #     self.args.render_stack = 'Median_1_Gephyrin'
+    #     self.args.render_baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
 
-        self.args.create_resources = True
-        channel = self.args.channel
-        result = per_channel_ingest(self.args, channel)
-        assert result == 0
+    #     self.args.create_resources = True
+    #     channel = self.args.channel
+    #     result = per_channel_ingest(self.args, channel)
+    #     assert result == 0
 
-        self.args.create_resources = False
-        result = per_channel_ingest(self.args, channel)
-        assert result == 0
+    #     self.args.create_resources = False
+    #     result = per_channel_ingest(self.args, channel)
+    #     assert result == 0
 
-        # cleanup
-        ingest_job = IngestJob(self.args)
-        boss_res_params = BossResParams(ingest_job, get_only=True)
-        boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
-        boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
-        os.remove(ingest_job.get_log_fname())
+    #     # cleanup
+    #     ingest_job = IngestJob(self.args)
+    #     boss_res_params = BossResParams(ingest_job, get_only=True)
+    #     boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
+    #     boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
+    #     os.remove(ingest_job.get_log_fname())
 
-    def test_ingest_render_channel_uint16_large(self):
-        now = (datetime.now()).strftime("%Y%m%d-%H%M%S")
+    # def test_ingest_render_channel_uint16_large(self):
+    #     now = (datetime.now()).strftime("%Y%m%d-%H%M%S")
 
-        self.args.datasource = 'render'
-        self.args.collection = 'ben_dev'
-        self.args.experiment = 'M247514_Rorb_1_light' + now
-        self.args.channel = 'synapsin' + now
-        self.args.datatype = 'uint16'
+    #     self.args.datasource = 'render'
+    #     self.args.collection = 'ben_dev'
+    #     self.args.experiment = 'M247514_Rorb_1_light' + now
+    #     self.args.channel = 'synapsin' + now
+    #     self.args.datatype = 'uint16'
 
-        self.args.forced_offsets = [2041, 6259, 0]
-        self.args.coord_frame_x_extent = [0, 14215]
-        self.args.coord_frame_y_extent = [0, 11123]
-        self.args.coord_frame_z_extent = [0, 101]
-        self.args.render_scale = 0.03125
+    #     self.args.forced_offsets = [2041, 6259, 0]
+    #     self.args.coord_frame_x_extent = [0, 14215]
+    #     self.args.coord_frame_y_extent = [0, 11123]
+    #     self.args.coord_frame_z_extent = [0, 101]
+    #     self.args.render_scale = 0.03125
 
-        self.args.voxel_size = [96, 96, 50]
-        self.args.voxel_unit = 'nanometers'
+    #     self.args.voxel_size = [96, 96, 50]
+    #     self.args.voxel_unit = 'nanometers'
 
-        self.args.render_owner = 'Forrest'
-        self.args.render_project = 'M247514_Rorb_1'
-        self.args.render_stack = 'BIGALIGN_LENS_synapsin_deconvnew'
-        self.args.render_baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
-        self.args.z_range = [2, 3]
+    #     self.args.render_owner = 'Forrest'
+    #     self.args.render_project = 'M247514_Rorb_1'
+    #     self.args.render_stack = 'BIGALIGN_LENS_synapsin_deconvnew'
+    #     self.args.render_baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
+    #     self.args.z_range = [2, 3]
 
-        self.args.create_resources = True
-        channel = self.args.channel
-        result = per_channel_ingest(self.args, channel)
-        assert result == 0
+    #     self.args.create_resources = True
+    #     channel = self.args.channel
+    #     result = per_channel_ingest(self.args, channel)
+    #     assert result == 0
 
-        self.args.create_resources = False
-        result = per_channel_ingest(self.args, channel)
-        assert result == 0
+    #     self.args.create_resources = False
+    #     result = per_channel_ingest(self.args, channel)
+    #     assert result == 0
 
-        #assert equal
-        ingest_job = IngestJob(self.args)
-        boss_res_params = BossResParams(ingest_job, get_only=True)
-        assert assert_equal(boss_res_params, ingest_job, self.args.z_range)
+    #     #assert equal
+    #     ingest_job = IngestJob(self.args)
+    #     boss_res_params = BossResParams(ingest_job, get_only=True)
+    #     assert assert_equal(boss_res_params, ingest_job, self.args.z_range)
 
-        # cleanup
-        boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
-        boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
-        os.remove(ingest_job.get_log_fname())
+    #     # cleanup
+    #     boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
+    #     boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
+    #     os.remove(ingest_job.get_log_fname())

@@ -37,7 +37,7 @@ Uploading loads 16 separate image files (either PNG or TIFF) at a time into memo
 
 ## Config
 
-1. Register for a free account and generate a [Boss API key](https://api.boss.neurodata.io/v1/mgmt/token) and save it to file named `neurodata.cfg` (using the format provided in [neurodata.cfg.example](neurodata.cfg.example))
+1. Register for a free account and generate a [Boss API key](https://api.boss.neurodata.io/v1/mgmt/token) and save it to file named `neurodata.cfg` (using the format provided in [neurodata.cfg.example](examples/neurodata.cfg.example))
 
 1. To send messages through Slack (optional) you will also need a [Slack API key](https://api.slack.com/custom-integrations/legacy-tokens) and save to file `slack_token`.
 
@@ -88,14 +88,29 @@ To run
 
 ### Python usage
 
-See [example.py](example.py)
+See [example.py](examples/example.py)
 
 ## Upload images (ndpush)
 
 - Please contact NeuroData for requisite privileges before starting an ingest.
 
-- To generate an ingest's command line arguments, create and edit a file copied from provided example: `gen_commands.example.py`.
+- To generate an ingest's command line arguments, create and edit a file copied from provided example: [gen_commands.example.py](examples/gen_commands.example.py).
 
 - Add your experiment details and run it from within the activated python environment (`python gen_commands.py`).  It will generate command lines to run and estimate the amount of memory needed.  You can then copy and run those commands.
 
 - Alternatively, run: `python ingest_large_vol.py -h` to see the complete list of command line options.
+
+## Testing
+
+We use [pytest](https://pytest.org/) as our testing library.  To run the tests:
+- Create a `.env` file and copy the following line of code, inserting your own API token into it:
+  ```ini
+  BOSS_TOKEN=<<your token from https://api.boss.neurodata.io/token/ here>>
+  SLACK_TOKEN=<your token from https://api.slack.com/custom-integrations/legacy-tokens here>>
+  ```
+- You'll also need to edit the tests to use your slack username
+- Install testing requirements in your virtual environment: `pip install pytest`
+- Configure your test environment to load that file into your environmental variables (in [vscode](https://code.visualstudio.com/docs/python/environments#_where-the-extension-looks-for-environments) set the `python.envFile` option to `"${workspaceFolder}/.env"`)
+- Run all the tests from the command line: `python -m pytest`
+- Or for a particular function in a file: `python -m pytest .\tests\test_ndpull.py::Testndpull::test_print_meta`
+- Note that some tests may fail as a result of not having access to specific BOSS resources.  Either modify the tests to use different resources or contact NeuroData to gain access (specifically need to be added to the `dev` group in the BOSS).

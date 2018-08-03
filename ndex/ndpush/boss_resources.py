@@ -5,6 +5,7 @@ Associated with an ingest job
 '''
 
 import math
+import os
 
 from requests import HTTPError
 
@@ -20,7 +21,7 @@ class BossResParams:
         self.coord_frame_name = '_'.join(
             (ingest_job.coll_name, ingest_job.exp_name))
 
-        self.rmt = BossRemote(self.ingest_job.boss_config_file)
+        self.rmt = self.setup_remote()
 
         self.coll_resource = self.setup_boss_collection(get_only=get_only)
 
@@ -30,6 +31,17 @@ class BossResParams:
         self.exp_resource = self.setup_boss_experiment(get_only=get_only)
 
         self.ch_resource = self.setup_boss_channel(get_only=get_only)
+
+    def setup_remote(self):
+        if self.ingest_job.boss_config_file:
+            return BossRemote(self.ingest_job.boss_config_file)
+        else:
+            # try to load from environment variable
+            token = os.environ['BOSS_TOKEN']
+            protocol = 'https'
+            host = 'api.boss.neurodata.io'
+            config_dict = {'token': token, 'protocol': protocol, 'host': host}
+            return BossRemote(config_dict)
 
     def get_boss_project(self, proj_setup, get_only):
         try:
@@ -77,6 +89,16 @@ class BossResParams:
                                           coord_frame_resource.y_voxel_size,
                                           coord_frame_resource.z_voxel_size]
             self.ingest_job.voxel_unit = coord_frame_resource.voxel_unit
+            if self.ingest_job.get_extents:
+                self.ingest_job.coord_frame_x_extent = [coord_frame_resource.x_start,
+                                                        coord_frame_resource.x_stop]
+                self.ingest_job.coord_frame_y_extent = [coord_frame_resource.y_start,
+                                                        coord_frame_resource.y_stop]
+                self.ingest_job.coord_frame_z_extent = [coord_frame_resource.z_start,
+                                                        coord_frame_resource.z_stop]
+                self.ingest_job.x_extent = self.ingest_job.coord_frame_x_extent
+                self.ingest_job.y_extent = self.ingest_job.coord_frame_y_extent
+                self.ingest_job.z_extent = self.ingest_job.coord_frame_z_extent
 
         return coord_frame_resource
 

@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from ..ingest_job import IngestJob
-from .create_images import create_img_file, del_test_images, gen_images
+from ndex.ndpush.ingest_job import IngestJob
+from create_images import create_img_file, del_test_images, gen_images
 
 
 class TestIngestJob:
@@ -17,7 +17,7 @@ class TestIngestJob:
         self.args = Namespace(
             datasource='local',
             slack_usr='benfalk',
-            slack_token_file='slack_token',
+            slack_token_file=None,
             s3_bucket_name=None,
             collection='ben_dev',
             experiment='dev_ingest_4',
@@ -174,81 +174,6 @@ class TestIngestJob:
     def test_create_s3_IngestJob(self):
         pass
 
-    def test_create_render_IngestJob(self):
-        self.set_render_args()
-        ingest_job = IngestJob(self.args)
-
-        assert ingest_job.datatype == 'uint8'
-
-        assert ingest_job.render_obj.scale == 1
-        assert ingest_job.render_window is None
-
-        assert ingest_job.x_extent == [0, 5608]
-        assert ingest_job.y_extent == [0, 2049]
-        assert ingest_job.z_extent == [0, 536]
-
-        assert ingest_job.render_obj.tile_width == 2048
-        assert ingest_job.render_obj.tile_height == 2047
-
-        assert ingest_job.z_range == [0, 1]  # from our params in setup
-        os.remove(ingest_job.get_log_fname())
-
-    def test_create_render_IngestJob_uint16(self):
-        self.set_render_args()
-        self.args.datatype = 'uint16'
-        ingest_job = IngestJob(self.args)
-
-        assert ingest_job.datatype == 'uint16'
-
-        assert ingest_job.render_obj.scale == 1
-        assert ingest_job.render_window is None
-
-        assert ingest_job.x_extent == [0, 5608]
-        assert ingest_job.y_extent == [0, 2049]
-        assert ingest_job.z_extent == [0, 536]
-
-        assert ingest_job.render_obj.tile_width == 2048
-        assert ingest_job.render_obj.tile_height == 2047
-
-        assert ingest_job.z_range == [0, 1]  # from our params in setup
-        os.remove(ingest_job.get_log_fname())
-
-    def test_create_render_scale_quarter_IngestJob(self):
-        self.set_render_args()
-        self.args.render_scale = .25
-        ingest_job = IngestJob(self.args)
-
-        assert ingest_job.render_obj.scale == self.args.render_scale
-
-        assert ingest_job.x_extent == [0, round(5608 * self.args.render_scale)]
-        assert ingest_job.y_extent == [0, round(2049 * self.args.render_scale)]
-        assert ingest_job.z_extent == [0, 536]
-
-        assert ingest_job.render_obj.tile_width == 2048
-        assert ingest_job.render_obj.tile_height == 2047
-
-        assert ingest_job.z_range == [0, 1]  # from our params in setup
-        os.remove(ingest_job.get_log_fname())
-
-    def test_create_render_window_IngestJob(self):
-        self.set_render_args()
-        self.args.render_window = [50, 1000]
-
-        ingest_job = IngestJob(self.args)
-
-        assert ingest_job.render_window == self.args.render_window
-        os.remove(ingest_job.get_log_fname())
-
-    def set_render_args(self):
-        self.args.datasource = 'render'
-        self.args.experiment = 'test_render'
-        self.args.channel = 'image_test'
-        self.args.datatype = 'uint8'
-        self.args.render_owner = '6_ribbon_experiments'
-        self.args.render_project = 'M321160_Ai139_smallvol'
-        self.args.render_stack = 'Median_1_Gephyrin'
-        self.args.render_baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
-
     def test_send_msg(self):
         ingest_job = IngestJob(self.args)
 
@@ -286,44 +211,6 @@ class TestIngestJob:
         assert img_fname == img_fname_test
         os.remove(ingest_job.get_log_fname())
 
-    def test_get_img_fname_render(self):
-        self.set_render_args()
-        ingest_job = IngestJob(self.args)
-
-        img_fname = ingest_job.get_img_fname(0)
-
-        assert img_fname is None
-        os.remove(ingest_job.get_log_fname())
-
-    # was mostly for debugging, takes ~30 seconds at 1/32
-    def test_get_AT_img_render_16bit(self):
-        self.args.datasource = 'render'
-        self.args.collection = 'collman'
-        self.args.experiment = 'M247514_Rorb_1_light'
-        self.args.channel = 'synapsin'
-        self.args.datatype = 'uint16'
-
-        self.args.forced_offsets = [2041, 6259, 0]
-        self.args.coord_frame_x_extent = [0, 14215]
-        self.args.coord_frame_y_extent = [0, 11123]
-        self.args.coord_frame_z_extent = [0, 101]
-        self.args.render_scale = 1/2**8
-
-        self.args.voxel_size = [96, 96, 50]
-        self.args.voxel_unit = 'nanometers'
-
-        self.args.render_owner = 'Forrest'
-        self.args.render_project = 'M247514_Rorb_1'
-        self.args.render_stack = 'BIGALIGN_LENS_synapsin_deconvnew'
-        self.args.render_baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
-
-        ingest_job = IngestJob(self.args)
-
-        img_array = ingest_job.load_img(2)
-        assert np.absolute(img_array).sum() > 0
-
-        os.remove(ingest_job.get_log_fname())
-
     def test_load_img_local(self):
         ingest_job = IngestJob(self.args)
 
@@ -338,61 +225,6 @@ class TestIngestJob:
         img_local_test = np.array(Image.open(img_fname))
 
         assert np.array_equal(im, img_local_test)
-        os.remove(ingest_job.get_log_fname())
-
-    def test_load_img_s3(self):
-        # currently contained in the load_img_info_s3 test
-        pass
-
-    def test_get_img_info_render(self):
-        self.set_render_args()
-        ingest_job = IngestJob(self.args)
-
-        z_slice = 0
-        im_width, im_height, im_datatype = ingest_job.get_img_info(z_slice)
-
-        assert im_width == ingest_job.img_size[0]
-        assert im_height == ingest_job.img_size[1]
-        assert im_datatype == self.args.datatype
-        os.remove(ingest_job.get_log_fname())
-
-    def test_get_img_info_render_neg_extents(self):
-        self.set_render_args()
-        self.args.offset_extents = True
-        self.args.render_stack = 'Stitched_DAPI_1_Lowres_RoughAligned'
-
-        ingest_job = IngestJob(self.args)
-
-        assert ingest_job.render_obj.x_rng_unscaled == [-3534, 12469]
-        assert ingest_job.render_obj.y_rng_unscaled == [-7196, 7734]
-
-        z_slice = ingest_job.z_range[0]
-        im_width, im_height, im_datatype = ingest_job.get_img_info(z_slice)
-
-        assert im_width == ingest_job.img_size[0]
-        assert im_height == ingest_job.img_size[1]
-        assert im_datatype == self.args.datatype
-        os.remove(ingest_job.get_log_fname())
-
-    def test_get_img_info_render_neg_extents_forced_offset(self):
-        self.set_render_args()
-        self.args.forced_offsets = [4000, 8000, 0]
-        self.args.render_stack = 'Stitched_DAPI_1_Lowres_RoughAligned'
-
-        ingest_job = IngestJob(self.args)
-
-        assert ingest_job.x_extent == [-3534+4000, 12469+4000]
-        assert ingest_job.y_extent == [-7196+8000, 7734+8000]
-
-        assert ingest_job.render_obj.x_rng_unscaled == [-3534, 12469]
-        assert ingest_job.render_obj.y_rng_unscaled == [-7196, 7734]
-
-        z_slice = ingest_job.z_range[0]
-        im_width, im_height, im_datatype = ingest_job.get_img_info(z_slice)
-
-        assert im_width == ingest_job.img_size[0]
-        assert im_height == ingest_job.img_size[1]
-        assert im_datatype == self.args.datatype
         os.remove(ingest_job.get_log_fname())
 
     def test_get_img_info_uint8_tif(self):
@@ -543,3 +375,167 @@ class TestIngestJob:
 
         del_test_images(ingest_job)
         os.remove(ingest_job.get_log_fname())
+
+    # def test_create_render_IngestJob(self):
+    #     self.set_render_args()
+    #     ingest_job = IngestJob(self.args)
+
+    #     assert ingest_job.datatype == 'uint8'
+
+    #     assert ingest_job.render_obj.scale == 1
+    #     assert ingest_job.render_window is None
+
+    #     assert ingest_job.x_extent == [0, 5608]
+    #     assert ingest_job.y_extent == [0, 2049]
+    #     assert ingest_job.z_extent == [0, 536]
+
+    #     assert ingest_job.render_obj.tile_width == 2048
+    #     assert ingest_job.render_obj.tile_height == 2047
+
+    #     assert ingest_job.z_range == [0, 1]  # from our params in setup
+    #     os.remove(ingest_job.get_log_fname())
+
+    # def test_create_render_IngestJob_uint16(self):
+    #     self.set_render_args()
+    #     self.args.datatype = 'uint16'
+    #     ingest_job = IngestJob(self.args)
+
+    #     assert ingest_job.datatype == 'uint16'
+
+    #     assert ingest_job.render_obj.scale == 1
+    #     assert ingest_job.render_window is None
+
+    #     assert ingest_job.x_extent == [0, 5608]
+    #     assert ingest_job.y_extent == [0, 2049]
+    #     assert ingest_job.z_extent == [0, 536]
+
+    #     assert ingest_job.render_obj.tile_width == 2048
+    #     assert ingest_job.render_obj.tile_height == 2047
+
+    #     assert ingest_job.z_range == [0, 1]  # from our params in setup
+    #     os.remove(ingest_job.get_log_fname())
+
+    # def test_create_render_scale_quarter_IngestJob(self):
+    #     self.set_render_args()
+    #     self.args.render_scale = .25
+    #     ingest_job = IngestJob(self.args)
+
+    #     assert ingest_job.render_obj.scale == self.args.render_scale
+
+    #     assert ingest_job.x_extent == [0, round(5608 * self.args.render_scale)]
+    #     assert ingest_job.y_extent == [0, round(2049 * self.args.render_scale)]
+    #     assert ingest_job.z_extent == [0, 536]
+
+    #     assert ingest_job.render_obj.tile_width == 2048
+    #     assert ingest_job.render_obj.tile_height == 2047
+
+    #     assert ingest_job.z_range == [0, 1]  # from our params in setup
+    #     os.remove(ingest_job.get_log_fname())
+
+    # def test_create_render_window_IngestJob(self):
+    #     self.set_render_args()
+    #     self.args.render_window = [50, 1000]
+
+    #     ingest_job = IngestJob(self.args)
+
+    #     assert ingest_job.render_window == self.args.render_window
+    #     os.remove(ingest_job.get_log_fname())
+
+    # def set_render_args(self):
+    #     self.args.datasource = 'render'
+    #     self.args.experiment = 'test_render'
+    #     self.args.channel = 'image_test'
+    #     self.args.datatype = 'uint8'
+    #     self.args.render_owner = '6_ribbon_experiments'
+    #     self.args.render_project = 'M321160_Ai139_smallvol'
+    #     self.args.render_stack = 'Median_1_Gephyrin'
+    #     self.args.render_baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
+
+    # def test_get_img_fname_render(self):
+    #     self.set_render_args()
+    #     ingest_job = IngestJob(self.args)
+
+    #     img_fname = ingest_job.get_img_fname(0)
+
+    #     assert img_fname is None
+    #     os.remove(ingest_job.get_log_fname())
+
+    # # was mostly for debugging, takes ~30 seconds at 1/32
+    # def test_get_AT_img_render_16bit(self):
+    #     self.args.datasource = 'render'
+    #     self.args.collection = 'collman'
+    #     self.args.experiment = 'M247514_Rorb_1_light'
+    #     self.args.channel = 'synapsin'
+    #     self.args.datatype = 'uint16'
+
+    #     self.args.forced_offsets = [2041, 6259, 0]
+    #     self.args.coord_frame_x_extent = [0, 14215]
+    #     self.args.coord_frame_y_extent = [0, 11123]
+    #     self.args.coord_frame_z_extent = [0, 101]
+    #     self.args.render_scale = 1/2**8
+
+    #     self.args.voxel_size = [96, 96, 50]
+    #     self.args.voxel_unit = 'nanometers'
+
+    #     self.args.render_owner = 'Forrest'
+    #     self.args.render_project = 'M247514_Rorb_1'
+    #     self.args.render_stack = 'BIGALIGN_LENS_synapsin_deconvnew'
+    #     self.args.render_baseURL = 'https://render-dev-eric.neurodata.io/render-ws/v1/'
+
+    #     ingest_job = IngestJob(self.args)
+
+    #     img_array = ingest_job.load_img(2)
+    #     assert np.absolute(img_array).sum() > 0
+
+    #     os.remove(ingest_job.get_log_fname())
+
+    # def test_get_img_info_render(self):
+    #     self.set_render_args()
+    #     ingest_job = IngestJob(self.args)
+
+    #     z_slice = 0
+    #     im_width, im_height, im_datatype = ingest_job.get_img_info(z_slice)
+
+    #     assert im_width == ingest_job.img_size[0]
+    #     assert im_height == ingest_job.img_size[1]
+    #     assert im_datatype == self.args.datatype
+    #     os.remove(ingest_job.get_log_fname())
+
+    # def test_get_img_info_render_neg_extents(self):
+    #     self.set_render_args()
+    #     self.args.offset_extents = True
+    #     self.args.render_stack = 'Stitched_DAPI_1_Lowres_RoughAligned'
+
+    #     ingest_job = IngestJob(self.args)
+
+    #     assert ingest_job.render_obj.x_rng_unscaled == [-3534, 12469]
+    #     assert ingest_job.render_obj.y_rng_unscaled == [-7196, 7734]
+
+    #     z_slice = ingest_job.z_range[0]
+    #     im_width, im_height, im_datatype = ingest_job.get_img_info(z_slice)
+
+    #     assert im_width == ingest_job.img_size[0]
+    #     assert im_height == ingest_job.img_size[1]
+    #     assert im_datatype == self.args.datatype
+    #     os.remove(ingest_job.get_log_fname())
+
+    # def test_get_img_info_render_neg_extents_forced_offset(self):
+    #     self.set_render_args()
+    #     self.args.forced_offsets = [4000, 8000, 0]
+    #     self.args.render_stack = 'Stitched_DAPI_1_Lowres_RoughAligned'
+
+    #     ingest_job = IngestJob(self.args)
+
+    #     assert ingest_job.x_extent == [-3534+4000, 12469+4000]
+    #     assert ingest_job.y_extent == [-7196+8000, 7734+8000]
+
+    #     assert ingest_job.render_obj.x_rng_unscaled == [-3534, 12469]
+    #     assert ingest_job.render_obj.y_rng_unscaled == [-7196, 7734]
+
+    #     z_slice = ingest_job.z_range[0]
+    #     im_width, im_height, im_datatype = ingest_job.get_img_info(z_slice)
+
+    #     assert im_width == ingest_job.img_size[0]
+    #     assert im_height == ingest_job.img_size[1]
+    #     assert im_datatype == self.args.datatype
+    #     os.remove(ingest_job.get_log_fname())

@@ -4,12 +4,11 @@ from argparse import Namespace
 from datetime import datetime
 
 import pytest
+from intern.resource.boss.resource import *
 from requests import HTTPError
 
-from ..boss_resources import BossResParams
-from ..ingest_job import IngestJob
-
-from intern.resource.boss.resource import *
+from ndex.ndpush.boss_resources import BossResParams
+from ndex.ndpush.ingest_job import IngestJob
 
 BOSS_URL = 'https://api.boss.neurodata.io/latest/'
 
@@ -25,7 +24,7 @@ class TestBossResources:
             collection='ben_dev',
             experiment='dev_ingest_4',
             channel='def_files',
-            boss_config_file='neurodata.cfg',
+            boss_config_file=None,
             x_extent=[0, 1000],
             y_extent=[0, 1024],
             z_extent=[0, 100])
@@ -57,7 +56,7 @@ class TestBossResources:
             collection='ben_dev',
             experiment='dev_ingest_4' + now.strftime("%Y%m%d-%H%M%S"),
             channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
-            boss_config_file='neurodata.cfg',
+            boss_config_file=None,
             voxel_size=[1, 5, 1],
             voxel_unit='nanometers',
             datatype='uint16',
@@ -95,7 +94,7 @@ class TestBossResources:
             collection='ben_dev',
             experiment='dev_ingest_neg' + now.strftime("%Y%m%d-%H%M%S"),
             channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
-            boss_config_file='neurodata.cfg',
+            boss_config_file=None,
             voxel_size=[1, 5, 1],
             voxel_unit='nanometers',
             datatype='uint16',
@@ -134,7 +133,7 @@ class TestBossResources:
             collection='ben_dev',
             experiment='dev_ingest_neg' + now.strftime("%Y%m%d-%H%M%S"),
             channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
-            boss_config_file='neurodata.cfg',
+            boss_config_file=None,
             voxel_size=[1, 5, 1],
             voxel_unit='nanometers',
             datatype='uint16',
@@ -173,7 +172,7 @@ class TestBossResources:
             collection='ben_dev',
             experiment='dev_ingest_neg' + now.strftime("%Y%m%d-%H%M%S"),
             channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
-            boss_config_file='neurodata.cfg',
+            boss_config_file=None,
             voxel_size=[1, 5, 1],
             voxel_unit='nanometers',
             datatype='uint16',
@@ -212,7 +211,7 @@ class TestBossResources:
             collection='ben_dev',
             experiment='dev_ingest_4' + now.strftime("%Y%m%d-%H%M%S"),
             channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
-            boss_config_file='neurodata.cfg',
+            boss_config_file=None,
             voxel_size=voxel_size,
             voxel_unit='nanometers',
             datatype='uint16',
@@ -235,7 +234,7 @@ class TestBossResources:
             collection='ben_dev',
             experiment='dev_ingest_4',
             channel='def_files_annot',
-            boss_config_file='neurodata.cfg',
+            boss_config_file=None,
             source_channel='def_files',
             x_extent=[0, 1000],
             y_extent=[0, 1024],
@@ -264,7 +263,7 @@ class TestBossResources:
             collection='ben_dev',
             experiment='dev_ingest_4',
             channel='def_files_annotation_' + now.strftime("%Y%m%d-%H%M%S"),
-            boss_config_file='neurodata.cfg',
+            boss_config_file=None,
             source_channel='empty_' + now.strftime("%Y%m%d-%H%M%S"),
             voxel_size=[1, 1, 1],
             voxel_unit='micrometers',
