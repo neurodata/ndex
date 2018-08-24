@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/neurodata/ndex.svg?branch=master)](https://travis-ci.org/neurodata/ndex)  [![Coverage Status](https://coveralls.io/repos/github/neurodata/ndpull/badge.svg?branch=master)](https://coveralls.io/github/neurodata/ndpull?branch=master)
+[![PyPI version](https://badge.fury.io/py/ndexchange.svg)](https://badge.fury.io/py/ndexchange) [![Build Status](https://travis-ci.org/neurodata/ndex.svg?branch=master)](https://travis-ci.org/neurodata/ndex)  [![Coverage Status](https://coveralls.io/repos/github/neurodata/ndpull/badge.svg?branch=master)](https://coveralls.io/github/neurodata/ndpull?branch=master)
 
 # ndex
 

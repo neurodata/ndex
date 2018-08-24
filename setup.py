@@ -12,7 +12,7 @@ with open(os.path.join(here, 'requirements.txt'), encoding='utf-8') as f:
 
 install_requires = [x.strip() for x in all_reqs if 'git+' not in x]
 
-setup(name='ndex',
+setup(name='ndexchange',
       version=ndex.version,
       description='Python 3 program to download data from NeuroData',
       url='https://github.com/neurodata/ndex',
