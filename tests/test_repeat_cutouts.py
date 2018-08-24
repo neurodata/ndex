@@ -119,7 +119,7 @@ def create_local_ingest_params():
     s3_bucket_name = None
     aws_profile = None
     boss_config_file = None
-    data_directory = 'local_img_test_data\\'
+    data_directory = 'local_img_test_data/'
     file_name_pattern = 'img_<p:4>'
     img_format = 'tif'
     z_step = 1

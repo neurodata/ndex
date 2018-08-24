@@ -157,10 +157,10 @@ class IngestJob:
                          self.coord_frame_z_extent]
         extents = [self.x_extent, self.y_extent, self.z_extent]
 
-        if (None in extents or None in coord_extents) and (self.get_extents is False):
+        if (None in extents or None in coord_extents) and (not self.get_extents):
             raise ValueError
 
-        if self.get_extents is False:
+        if not self.get_extents:
             for coord, ext in zip(coord_extents, extents):
                 if coord[0] > ext[0] or coord[1] < ext[1]:
                     raise ValueError

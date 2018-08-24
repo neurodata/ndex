@@ -103,14 +103,24 @@ See [example.py](examples/example.py)
 ## Testing
 
 We use [pytest](https://pytest.org/) as our testing library.  To run the tests:
+
+- Install testing requirements in your virtual environment: `pip install pytest`
+
+For running with vscode (where you can set the env file) or on travis-ci:
 - Create a `.env` file and copy the following line of code, inserting your own API token into it:
   ```ini
   BOSS_TOKEN=<<your token from https://api.boss.neurodata.io/token/ here>>
   SLACK_TOKEN=<your token from https://api.slack.com/custom-integrations/legacy-tokens here>>
   ```
-- You'll also need to edit the tests to use your slack username
-- Install testing requirements in your virtual environment: `pip install pytest`
 - Configure your test environment to load that file into your environmental variables (in [vscode](https://code.visualstudio.com/docs/python/environments#_where-the-extension-looks-for-environments) set the `python.envFile` option to `"${workspaceFolder}/.env"`)
+- Follow this guide to add the tokens to your travis.yml file:
+https://docs.travis-ci.com/user/encryption-keys/
+
+If running pytest from the command line, create a pytest.ini file in the root directory ([example](examples/pytest.ini.example))
+- Install plugin for pytest to automatically load the environment variables: `pip isntall pytest-env`
 - Run all the tests from the command line: `python -m pytest`
 - Or for a particular function in a file: `python -m pytest .\tests\test_ndpull.py::Testndpull::test_print_meta`
-- Note that some tests may fail as a result of not having access to specific BOSS resources.  Either modify the tests to use different resources or contact NeuroData to gain access (specifically need to be added to the `dev` group in the BOSS).
+
+Notes:
+- You'll need to edit the tests to use your slack username
+- Some tests may fail as a result of not having access to specific BOSS resources.  Either modify the tests to use different resources or contact NeuroData to gain access (specifically need to be added to the `dev` group in the BOSS).

@@ -24,7 +24,7 @@ class TestIngestJob:
             channel='def_files',
             datatype='uint16',
             base_filename='img_<p:4>',
-            base_path='local_img_test_data\\',
+            base_path='local_img_test_data/',
             extension='tif',
             x_extent=[0, 1000],
             y_extent=[0, 1024],
@@ -280,7 +280,7 @@ class TestIngestJob:
         z_slice = 0
 
         # create an image
-        local_base_path = 'local_img_test_data\\'
+        local_base_path = 'local_img_test_data/'
 
         img_fname = ingest_job.get_img_fname(z_slice)
         img_fname_only = os.path.basename(img_fname)
@@ -348,12 +348,12 @@ class TestIngestJob:
 
     def test_get_img_fname_channel(self):
         self.args.base_filename = 'img_<ch>_<p:4>'
-        self.args.base_path = 'local_img_<ch>_test_data\\'
+        self.args.base_path = 'local_img_<ch>_test_data/'
 
         ingest_job = IngestJob(self.args)
 
         img_fname = ingest_job.get_img_fname(0)
-        assert img_fname == 'local_img_{0}_test_data\\img_{0}_{1:04d}.tif'.format(
+        assert img_fname == 'local_img_{0}_test_data/img_{0}_{1:04d}.tif'.format(
             self.args.channel, 0)
         os.remove(ingest_job.get_log_fname())
 

@@ -20,7 +20,7 @@ class TestIngestLargeVol:
     def setup(self):
         self.args = Namespace(datasource='local',
                               base_filename='img_<ch>_<p:4>',
-                              base_path='local_img_test_data\\',
+                              base_path='local_img_test_data/',
                               boss_config_file=None,
                               collection='ben_dev',
                               experiment='dev_ingest_4',

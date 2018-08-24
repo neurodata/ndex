@@ -1,3 +1,4 @@
 [pytest]
 env =
     BOSS_TOKEN=<<your token from https://api.boss.neurodata.io/token/ here>>
+    SLACK_TOKEN=<<your token from https://api.slack.com/custom-integrations/legacy-tokens here>>
