@@ -36,6 +36,6 @@ setup(name='ndex',
       ],
       zip_safe=False,
       entry_points={'console_scripts':
-                    ['ndpull=ndex.ndpull:main',
-                     'ndpush=ndex.ndpush:main'], },
+                    ['ndpull=ndex.ndpull.ndpull:main',
+                     'ndpush=ndex.ndpush.ingest_large_vol:main'], },
       )

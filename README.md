@@ -94,13 +94,13 @@ See [example.py](examples/example.py)
 
 ## Upload images (ndpush)
 
-- Please contact NeuroData for requisite privileges before starting an ingest.
+- Please contact NeuroData for required privileges before starting an ingest.
 
 - To generate an ingest's command line arguments, create and edit a file copied from provided example: [gen_commands.example.py](examples/gen_commands.example.py).
 
 - Add your experiment details and run it from within the activated python environment (`python gen_commands.py`).  It will generate command lines to run and estimate the amount of memory needed.  You can then copy and run those commands.
 
-- Alternatively, run: `python ingest_large_vol.py -h` to see the complete list of command line options.
+- Alternatively, run: `ndpush -h` to see the complete list of command line options.
 
 ## Testing
 

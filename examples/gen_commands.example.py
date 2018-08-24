@@ -10,7 +10,7 @@ from subprocess import list2cmdline
 """ Recommend copy this to a new location for editing """
 
 
-script = "ingest_large_vol.py"
+script = "ndpush.py"
 
 source_type = 's3'  # either 'local', 's3', or 'render'
 
