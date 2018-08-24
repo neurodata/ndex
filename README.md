@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/neurodata/ndex.svg?branch=master)](https://travis-ci.org/neurodata/ndex)  [![Coverage Status](https://coveralls.io/repos/github/neurodata/ndpull/badge.svg?branch=master)](https://coveralls.io/github/neurodata/ndpull?branch=master)
+
 # ndex
 
 Python 3 command line programs to exchange (download/upload) image data with NeuroData's cloud deployment of APL's BOSS spatial database: <https://github.com/jhuapl-boss>.  View available data at [ndweb](https://ndwebtools.neurodata.io/) or [neurodata.io](https://neurodata.io/).  

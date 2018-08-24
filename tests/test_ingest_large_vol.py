@@ -161,6 +161,8 @@ class TestIngestLargeVol:
         os.remove(ingest_job.get_log_fname())
 
     def test_post_uint16_cutout_offset_pixels(self):
+        now = (datetime.now()).strftime("%Y%m%d-%H%M%S")
+
         dtype = 'uint16'
         x_size = 128
         y_size = 128
@@ -178,10 +180,11 @@ class TestIngestLargeVol:
             offset + self.args.z_range[0], offset + self.args.z_range[1])
 
         self.args.datatype = dtype
-        self.args.channel = 'def_files'
-        ingest_job = IngestJob(self.args)
+        self.args.channel = 'def_files' + now
 
-        boss_res_params = BossResParams(ingest_job, get_only=True)
+        ingest_job = IngestJob(self.args)
+        self.args.create_resources = False
+        boss_res_params = BossResParams(ingest_job, get_only=False)
 
         ret_val = post_cutout(boss_res_params, ingest_job, [st_x, sp_x], [st_y, sp_y],
                               [st_z, sp_z], data, attempts=1)
