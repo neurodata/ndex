@@ -35,7 +35,7 @@ class TestIngestLargeVol:
                               z_step=1)
 
     def test_post_uint64_cutout(self):
-        now = datetime.now()
+        now = (datetime.now()).strftime("%Y%m%d-%H%M%S")
         x_size = 64
         y_size = 64
         dtype = 'uint64'
@@ -51,7 +51,7 @@ class TestIngestLargeVol:
 
         self.args.z_range = [0, 1]
         self.args.datatype = dtype
-        self.args.channel = 'def_files_annot_' + now.strftime("%Y%m%d-%H%M%S")
+        self.args.channel = 'def_files_annot_' + now
         self.args.source_channel = 'def_files'
         self.args.extension = 'tif'
 
@@ -73,6 +73,7 @@ class TestIngestLargeVol:
         os.remove(ingest_job.get_log_fname())
 
     def test_post_uint16_cutout(self):
+        now = (datetime.now()).strftime("%Y%m%d-%H%M%S")
         x_size = 128
         y_size = 128
         dtype = 'uint16'
@@ -87,10 +88,10 @@ class TestIngestLargeVol:
             0, x_size, 0, y_size, 0, self.args.z_range[1])
 
         self.args.datatype = dtype
-        self.args.channel = 'def_files'
-        ingest_job = IngestJob(self.args)
+        self.args.channel = 'def_files' + now
 
-        boss_res_params = BossResParams(ingest_job, get_only=True)
+        ingest_job = IngestJob(self.args)
+        boss_res_params = BossResParams(ingest_job, get_only=False)
 
         ret_val = post_cutout(boss_res_params, ingest_job, [st_x, sp_x], [st_y, sp_y],
                               [st_z, sp_z], data, attempts=1)
@@ -102,6 +103,7 @@ class TestIngestLargeVol:
         # assert they are the same
         assert np.array_equal(data_boss, data)
 
+        boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
         os.remove(ingest_job.get_log_fname())
 
     def test_ingest_blocks_uint16_8_threads(self):
@@ -197,6 +199,7 @@ class TestIngestLargeVol:
         assert np.array_equal(data_boss, data)
 
         os.remove(ingest_job.get_log_fname())
+        boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
 
     def test_ingest_uint8_annotations(self):
         dtype = 'uint8'
