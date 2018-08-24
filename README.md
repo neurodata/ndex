@@ -32,7 +32,7 @@ Uploading loads 16 separate image files (either PNG or TIFF) at a time into memo
 - Install
   - Via PyPI (Preferred)
 
-    `pip install ndex`
+    `pip install ndexchange`
   - From github (Latest dev version)
 
     `pip install git+git://github.com/neurodata/ndex.git`
