@@ -195,7 +195,8 @@ def per_channel_ingest(args, channel, threads=8):
 
     # create or get the boss resources for the data
     get_only = not ingest_job.create_resources
-    boss_res_params = BossResParams(ingest_job, get_only)
+    boss_res_params = BossResParams(ingest_job)
+    boss_res_params.get_resources(get_only=get_only)
 
     # we just create the resources, don't do anything else
     if ingest_job.create_resources:

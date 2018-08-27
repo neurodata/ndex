@@ -183,7 +183,8 @@ def iterate_posting_cutouts(cutouts):
 
                     ingest_job = IngestJob(args)
                     # we get these things from the resources that already exist on the boss:
-                    boss_res_params = BossResParams(ingest_job, get_only=True)
+                    boss_res_params = BossResParams(ingest_job)
+                    boss_res_params.get_resources(get_only=True)
 
                     ingest_cuts(cus_ch, ingest_job, boss_res_params)
 

@@ -84,7 +84,8 @@ def main():
     )
 
     ingest_job = IngestJob(args)
-    boss_res_params = BossResParams(ingest_job, get_only=False)
+    boss_res_params = BossResParams(ingest_job)
+    boss_res_params.get_resources(get_only=False)
 
     s3 = boto3.client('s3', region_name='us-east-1')
 

@@ -56,7 +56,8 @@ class TestIngestLargeVol:
         self.args.extension = 'tif'
 
         ingest_job = IngestJob(self.args)
-        boss_res_params = BossResParams(ingest_job, get_only=False)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=False)
 
         ret_val = post_cutout(boss_res_params, ingest_job, [st_x, sp_x], [st_y, sp_y],
                               [st_z, sp_z], data, attempts=1)
@@ -91,7 +92,8 @@ class TestIngestLargeVol:
         self.args.channel = 'def_files' + now
 
         ingest_job = IngestJob(self.args)
-        boss_res_params = BossResParams(ingest_job, get_only=False)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=False)
 
         ret_val = post_cutout(boss_res_params, ingest_job, [st_x, sp_x], [st_y, sp_y],
                               [st_z, sp_z], data, attempts=1)
@@ -129,7 +131,8 @@ class TestIngestLargeVol:
         result = per_channel_ingest(self.args, self.args.channel)
         assert result == 0
 
-        boss_res_params = BossResParams(ingest_job, get_only=True)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=True)
 
         z_slices = list(range(self.args.z_range[0], self.args.z_range[-1]))
         y_rng = self.args.y_extent
@@ -157,7 +160,8 @@ class TestIngestLargeVol:
 
         # cleanup
         ingest_job = IngestJob(self.args)
-        boss_res_params = BossResParams(ingest_job, get_only=True)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=True)
         boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
         boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
         os.remove(ingest_job.get_log_fname())
@@ -186,7 +190,8 @@ class TestIngestLargeVol:
 
         ingest_job = IngestJob(self.args)
         self.args.create_resources = False
-        boss_res_params = BossResParams(ingest_job, get_only=False)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=False)
 
         ret_val = post_cutout(boss_res_params, ingest_job, [st_x, sp_x], [st_y, sp_y],
                               [st_z, sp_z], data, attempts=1)
@@ -227,7 +232,8 @@ class TestIngestLargeVol:
         assert result == 0
 
         # cleanup
-        boss_res_params = BossResParams(ingest_job, get_only=True)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=True)
         boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
 
         del_test_images(ingest_job)
@@ -335,6 +341,7 @@ class TestIngestLargeVol:
             del_test_images(ingest_job)
             os.remove(ingest_job.get_log_fname())
             boss_res_params = BossResParams(ingest_job)
+            boss_res_params.get_resources(get_only=True)
             boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
         if len(channels) > 0:
             boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
@@ -366,6 +373,7 @@ class TestIngestLargeVol:
         del_test_images(ingest_job)
         os.remove(ingest_job.get_log_fname())
         boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=True)
         boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
         boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
 
@@ -400,7 +408,8 @@ class TestIngestLargeVol:
 
     #     # cleanup
     #     ingest_job = IngestJob(self.args)
-    #     boss_res_params = BossResParams(ingest_job, get_only=True)
+    #     boss_res_params = BossResParams(ingest_job)
+    #     boss_res_params.get_resources(get_only=True)
     #     boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
     #     boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
     #     os.remove(ingest_job.get_log_fname())
@@ -428,7 +437,8 @@ class TestIngestLargeVol:
 
     #     # cleanup
     #     ingest_job = IngestJob(self.args)
-    #     boss_res_params = BossResParams(ingest_job, get_only=True)
+    #     boss_res_params = BossResParams(ingest_job)
+    #     boss_res_params.get_resources(get_only=True)
     #     boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
     #     boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
     #     os.remove(ingest_job.get_log_fname())
@@ -468,7 +478,8 @@ class TestIngestLargeVol:
 
     #     #assert equal
     #     ingest_job = IngestJob(self.args)
-    #     boss_res_params = BossResParams(ingest_job, get_only=True)
+    #     boss_res_params = BossResParams(ingest_job)
+    #     boss_res_params.get_resources(get_only=True)
     #     assert assert_equal(boss_res_params, ingest_job, self.args.z_range)
 
     #     # cleanup

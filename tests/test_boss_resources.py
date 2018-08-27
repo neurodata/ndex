@@ -31,7 +31,8 @@ class TestBossResources:
 
         ingest_job = IngestJob(args)
 
-        boss_res_params = BossResParams(ingest_job, get_only=True)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=True)
 
         assert boss_res_params.coll_resource.name == args.collection
         assert boss_res_params.exp_resource.name == args.experiment
@@ -66,7 +67,8 @@ class TestBossResources:
             z_extent=[0, 100])
 
         ingest_job = IngestJob(args)
-        boss_res_params = BossResParams(ingest_job, get_only=False)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=False)
 
         assert boss_res_params.ch_resource.name == args.channel
         assert boss_res_params.exp_resource.hierarchy_method == 'anisotropic'
@@ -105,7 +107,8 @@ class TestBossResources:
             offset_extents=True)
 
         ingest_job = IngestJob(args)
-        boss_res_params = BossResParams(ingest_job, get_only=False)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=False)
 
         assert boss_res_params.coord_frame_resource.z_start == 200
         assert boss_res_params.coord_frame_resource.z_stop == 300
@@ -144,7 +147,8 @@ class TestBossResources:
             forced_offsets=[600, 500, 400])
 
         ingest_job = IngestJob(args)
-        boss_res_params = BossResParams(ingest_job, get_only=False)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=False)
 
         assert boss_res_params.coord_frame_resource.z_start == 200+400
         assert boss_res_params.coord_frame_resource.z_stop == 300+400
@@ -183,7 +187,8 @@ class TestBossResources:
             coord_frame_x_extent=[0, 2000])
 
         ingest_job = IngestJob(args)
-        boss_res_params = BossResParams(ingest_job, get_only=False)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=False)
 
         assert boss_res_params.coord_frame_resource.z_start == 200
         assert boss_res_params.coord_frame_resource.z_stop == 300
@@ -222,7 +227,8 @@ class TestBossResources:
 
         ingest_job = IngestJob(args)
         with pytest.raises(HTTPError):
-            boss_res_params = BossResParams(ingest_job, get_only=True)
+            boss_res_params = BossResParams(ingest_job)
+            boss_res_params.get_resources(get_only=True)
 
         os.remove(ingest_job.get_log_fname())
 
@@ -243,7 +249,8 @@ class TestBossResources:
 
         ingest_job = IngestJob(args)
 
-        boss_res_params = BossResParams(ingest_job, get_only=True)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=True)
 
         assert ingest_job.ch_name == boss_res_params.ch_resource.name
         assert ingest_job.boss_datatype == datatype
@@ -275,7 +282,8 @@ class TestBossResources:
 
         ingest_job = IngestJob(args)
 
-        boss_res_params = BossResParams(ingest_job, get_only=False)
+        boss_res_params = BossResParams(ingest_job)
+        boss_res_params.get_resources(get_only=False)
 
         assert ingest_job.ch_name == boss_res_params.ch_resource.name
         assert ingest_job.boss_datatype == datatype

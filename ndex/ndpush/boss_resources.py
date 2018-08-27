@@ -15,7 +15,7 @@ from intern.service.boss.httperrorlist import HTTPErrorList
 
 
 class BossResParams:
-    def __init__(self, ingest_job, get_only=True):
+    def __init__(self, ingest_job):
         self.ingest_job = ingest_job
 
         self.coord_frame_name = '_'.join(
@@ -23,6 +23,7 @@ class BossResParams:
 
         self.rmt = self.setup_remote()
 
+    def get_resources(self, get_only=True):
         self.coll_resource = self.setup_boss_collection(get_only=get_only)
 
         self.coord_frame_resource = self.setup_boss_coord_frame(

@@ -117,4 +117,4 @@ repeat_cutouts*.txt
 neurodata.cfg
 slack_token
 
-local_img_test_data
+test_images

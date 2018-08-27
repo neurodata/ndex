@@ -1,4 +1,4 @@
-from ndpull import ndpull
+from ndex import ndpull
 
 collection = 'kharris15'
 experiment = 'apical'
