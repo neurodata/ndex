@@ -24,7 +24,7 @@ class TestIngestJob:
             channel='def_files',
             datatype='uint16',
             base_filename='img_<p:4>',
-            base_path='local_img_test_data/',
+            base_path='test_images/',
             extension='tif',
             x_extent=[0, 1000],
             y_extent=[0, 1024],
@@ -226,6 +226,7 @@ class TestIngestJob:
 
         assert np.array_equal(im, img_local_test)
         os.remove(ingest_job.get_log_fname())
+        os.remove(img_fname)
 
     def test_get_img_info_uint8_tif(self):
         dtype = 'uint8'
@@ -243,6 +244,7 @@ class TestIngestJob:
         assert im_height == ingest_job.img_size[1]
         assert im_datatype == self.args.datatype
         os.remove(ingest_job.get_log_fname())
+        os.remove(img_fname)
 
     def test_get_img_info_uint16_tif(self):
         dtype = 'uint16'
@@ -260,6 +262,7 @@ class TestIngestJob:
         assert im_height == ingest_job.img_size[1]
         assert im_datatype == self.args.datatype
         os.remove(ingest_job.get_log_fname())
+        os.remove(img_fname)
 
     def set_s3_args(self):
         base_path = 'tests/'
@@ -280,24 +283,21 @@ class TestIngestJob:
         z_slice = 0
 
         # create an image
-        local_base_path = 'local_img_test_data/'
-
         img_fname = ingest_job.get_img_fname(z_slice)
-        img_fname_only = os.path.basename(img_fname)
         create_img_file(ingest_job.img_size[0], ingest_job.img_size[1],
-                        self.args.datatype, self.args.extension, local_base_path + img_fname_only)
+                        self.args.datatype, self.args.extension, img_fname)
 
         # put the image on a bucket
         s3 = boto3.resource('s3')
-        data = open(local_base_path + img_fname_only, 'rb')
-        s3.Bucket(self.args.s3_bucket_name).put_object(
-            Key=img_fname, Body=data)
+        with open(img_fname, 'rb') as img_file:
+            s3.Bucket(self.args.s3_bucket_name).put_object(
+                Key=img_fname, Body=img_file)
 
         # get info on that image
         im_width, im_height, im_datatype = ingest_job.get_img_info(z_slice)
 
         # assert the info is correct
-        im = np.array(Image.open(local_base_path + img_fname_only))
+        im = np.array(Image.open(img_fname))
         assert im_width == im.shape[1]
         assert im_height == im.shape[0]
         assert im_datatype == im.dtype
@@ -308,6 +308,7 @@ class TestIngestJob:
         # closing the boto3 session
         s3.meta.client._endpoint.http_session.close()
         os.remove(ingest_job.get_log_fname())
+        os.remove(img_fname)
 
     def test_get_img_info_uint16_png(self):
         file_format = 'png'
@@ -325,6 +326,7 @@ class TestIngestJob:
         assert im_height == ingest_job.img_size[1]
         assert im_datatype == self.args.datatype
         os.remove(ingest_job.get_log_fname())
+        os.remove(img_fname)
 
     def test_get_img_info_uint64_tif(self):
         file_format = 'tif'
@@ -345,6 +347,7 @@ class TestIngestJob:
         assert im_height == ingest_job.img_size[1]
         assert im_datatype == self.args.datatype
         os.remove(ingest_job.get_log_fname())
+        os.remove(img_fname)
 
     def test_get_img_fname_channel(self):
         self.args.base_filename = 'img_<ch>_<p:4>'
