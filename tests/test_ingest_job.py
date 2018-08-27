@@ -305,8 +305,6 @@ class TestIngestJob:
         s3.Bucket(self.args.s3_bucket_name).delete_objects(
             Delete={'Objects': [{'Key': img_fname}]})
 
-        # closing the boto3 session
-        s3.meta.client._endpoint.http_session.close()
         os.remove(ingest_job.get_log_fname())
         os.remove(img_fname)
 

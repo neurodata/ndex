@@ -50,13 +50,13 @@ class TestBossResources:
         os.remove(ingest_job.get_log_fname())
 
     def test_create_boss_res(self):
-        now = datetime.now()
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
         args = Namespace(
             datasource='local',
             collection='ben_dev',
-            experiment='dev_ingest_4' + now.strftime("%Y%m%d-%H%M%S"),
-            channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
+            experiment='dev_ingest_4' + now,
+            channel='def_files_' + now,
             boss_config_file=None,
             voxel_size=[1, 5, 1],
             voxel_unit='nanometers',
@@ -89,13 +89,13 @@ class TestBossResources:
         boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
 
     def test_create_boss_res_offsets(self):
-        now = datetime.now()
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
         args = Namespace(
             datasource='local',
             collection='ben_dev',
-            experiment='dev_ingest_neg' + now.strftime("%Y%m%d-%H%M%S"),
-            channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
+            experiment='dev_ingest_neg' + now,
+            channel='def_files_' + now,
             boss_config_file=None,
             voxel_size=[1, 5, 1],
             voxel_unit='nanometers',
@@ -129,13 +129,13 @@ class TestBossResources:
         boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
 
     def test_create_boss_res_forced_offsets(self):
-        now = datetime.now()
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
         args = Namespace(
             datasource='local',
             collection='ben_dev',
-            experiment='dev_ingest_neg' + now.strftime("%Y%m%d-%H%M%S"),
-            channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
+            experiment='dev_ingest_neg' + now,
+            channel='def_files_' + now,
             boss_config_file=None,
             voxel_size=[1, 5, 1],
             voxel_unit='nanometers',
@@ -169,13 +169,13 @@ class TestBossResources:
         boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
 
     def test_create_boss_res_specified_coord_frame(self):
-        now = datetime.now()
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
         args = Namespace(
             datasource='local',
             collection='ben_dev',
-            experiment='dev_ingest_neg' + now.strftime("%Y%m%d-%H%M%S"),
-            channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
+            experiment='dev_ingest_neg' + now,
+            channel='def_files_' + now,
             boss_config_file=None,
             voxel_size=[1, 5, 1],
             voxel_unit='nanometers',
@@ -205,7 +205,7 @@ class TestBossResources:
         boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
 
     def test_get_boss_res_wrong_img_size(self):
-        now = datetime.now()
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
         x_extent = [0, 2000]
         y_extent = [0, 1000]
@@ -214,8 +214,8 @@ class TestBossResources:
         args = Namespace(
             datasource='local',
             collection='ben_dev',
-            experiment='dev_ingest_4' + now.strftime("%Y%m%d-%H%M%S"),
-            channel='def_files_' + now.strftime("%Y%m%d-%H%M%S"),
+            experiment='dev_ingest_4' + now,
+            channel='def_files_' + now,
             boss_config_file=None,
             voxel_size=voxel_size,
             voxel_unit='nanometers',
@@ -261,7 +261,7 @@ class TestBossResources:
         os.remove(ingest_job.get_log_fname())
 
     def test_create_boss_annotation_channel(self):
-        now = datetime.now()
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
         datatype = 'uint64'
 
@@ -269,9 +269,9 @@ class TestBossResources:
             datasource='local',
             collection='ben_dev',
             experiment='dev_ingest_4',
-            channel='def_files_annotation_' + now.strftime("%Y%m%d-%H%M%S"),
+            channel='def_files_annotation_' + now,
             boss_config_file=None,
-            source_channel='empty_' + now.strftime("%Y%m%d-%H%M%S"),
+            source_channel='empty_' + now,
             voxel_size=[1, 1, 1],
             voxel_unit='micrometers',
             datatype=datatype,

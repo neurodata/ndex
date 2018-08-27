@@ -35,7 +35,7 @@ class TestIngestLargeVol:
                               z_step=1)
 
     def test_post_uint64_cutout(self):
-        now = (datetime.now()).strftime("%Y%m%d-%H%M%S")
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
         x_size = 64
         y_size = 64
         dtype = 'uint64'
@@ -74,7 +74,7 @@ class TestIngestLargeVol:
         os.remove(ingest_job.get_log_fname())
 
     def test_post_uint16_cutout(self):
-        now = (datetime.now()).strftime("%Y%m%d-%H%M%S")
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
         x_size = 128
         y_size = 128
         dtype = 'uint16'
@@ -109,7 +109,7 @@ class TestIngestLargeVol:
         os.remove(ingest_job.get_log_fname())
 
     def test_ingest_blocks_uint16_8_threads(self):
-        now = (datetime.now()).strftime("%Y%m%d-%H%M%S")
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
         self.args.experiment = 'dev_ingest_larger' + now
         self.args.channel = 'def_files' + now
@@ -167,7 +167,7 @@ class TestIngestLargeVol:
         os.remove(ingest_job.get_log_fname())
 
     def test_post_uint16_cutout_offset_pixels(self):
-        now = (datetime.now()).strftime("%Y%m%d-%H%M%S")
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
         dtype = 'uint16'
         x_size = 128
@@ -208,11 +208,10 @@ class TestIngestLargeVol:
 
     def test_ingest_uint8_annotations(self):
         dtype = 'uint8'
-        now = datetime.now()
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
         self.args.base_filename = 'img_annotation_<p:4>'
-        self.args.channel = 'def_files_annotation_' + \
-            now.strftime("%Y%m%d-%H%M%S")
+        self.args.channel = 'def_files_annotation_' + now
         self.args.channels_list_file = None
         self.args.source_channel = 'def_files'
         self.args.datatype = dtype
@@ -269,8 +268,8 @@ class TestIngestLargeVol:
 
     def test_per_channel_ingest_wrong_datatype(self):
         # create 16 bit images and post to 8 bit resource
-        now = datetime.now()
-        self.args.channel = 'def_files_8bit_' + now.strftime("%Y%m%d-%H%M%S")
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
+        self.args.channel = 'def_files_8bit_' + now
         self.args.extension = 'tif'
 
         # make 16 bit images
@@ -311,10 +310,9 @@ class TestIngestLargeVol:
             self.ingest_test_per_channel(self.args, channels)
 
     def test_per_channel_ingest_neg_x_extent_offset(self):
-        now = datetime.now()
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
-        self.args.experiment = 'test_neg_offset_' + \
-            now.strftime("%Y%m%d-%H%M%S")
+        self.args.experiment = 'test_neg_offset_' + now
         self.args.channel = 'def_files'
         self.args.datatype = 'uint16'
         self.args.x_extent = [-1000, 0]
@@ -347,10 +345,9 @@ class TestIngestLargeVol:
             boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
 
     def test_per_channel_ingest_neg_z_extent_offset(self):
-        now = datetime.now()
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
-        self.args.experiment = 'test_neg_offset_' + \
-            now.strftime("%Y%m%d-%H%M%S")
+        self.args.experiment = 'test_neg_offset_' + now
         self.args.channel = 'def_files'
         self.args.datatype = 'uint8'
         self.args.z_extent = [-100, 100]
@@ -386,11 +383,11 @@ class TestIngestLargeVol:
             assert result == 0
 
     # def test_ingest_render_stack(self):
-    #     now = datetime.now()
+    #     now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
     #     self.args.datasource = 'render'
-    #     self.args.experiment = 'test_render_' + now.strftime("%Y%m%d-%H%M%S")
-    #     self.args.channel = 'image_test_' + now.strftime("%Y%m%d-%H%M%S")
+    #     self.args.experiment = 'test_render_' + now
+    #     self.args.channel = 'image_test_' + now
     #     self.args.datatype = 'uint8'
     #     self.args.render_owner = '6_ribbon_experiments'
     #     self.args.render_project = 'M321160_Ai139_smallvol'
@@ -415,11 +412,11 @@ class TestIngestLargeVol:
     #     os.remove(ingest_job.get_log_fname())
 
     # def test_ingest_render_stack_uint16(self):
-    #     now = datetime.now()
+    #     now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
     #     self.args.datasource = 'render'
-    #     self.args.experiment = 'test_render_' + now.strftime("%Y%m%d-%H%M%S")
-    #     self.args.channel = 'image_test_' + now.strftime("%Y%m%d-%H%M%S")
+    #     self.args.experiment = 'test_render_' + now
+    #     self.args.channel = 'image_test_' + now
     #     self.args.datatype = 'uint16'
     #     self.args.render_owner = '6_ribbon_experiments'
     #     self.args.render_project = 'M321160_Ai139_smallvol'
@@ -444,7 +441,7 @@ class TestIngestLargeVol:
     #     os.remove(ingest_job.get_log_fname())
 
     # def test_ingest_render_channel_uint16_large(self):
-    #     now = (datetime.now()).strftime("%Y%m%d-%H%M%S")
+    #     now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
 
     #     self.args.datasource = 'render'
     #     self.args.collection = 'ben_dev'

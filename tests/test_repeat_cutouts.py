@@ -14,11 +14,10 @@ from ndex.ndpush.repeat_cutouts import Cutout, ingest_cuts, parse_cut_line
 class TestRepeatCutouts:
 
     def setup(self):
-        now = datetime.now()
-        now_string = now.strftime("%Y%m%d-%H%M%S")
+        now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
         self.coll = 'ben_dev'
         self.exp = 'dev_ingest_2'
-        self.ch = 'def_files' + now_string
+        self.ch = 'def_files' + now
         self.x = [0, 512]
         self.y = [0, 512]
         self.z = [0, 16]
