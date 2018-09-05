@@ -10,7 +10,7 @@ from subprocess import list2cmdline
 """ Recommend copy this to a new location for editing """
 
 
-script = "ndpush.py"
+script = "ndpush"
 
 source_type = 's3'  # either 'local', 's3', or 'render'
 
@@ -144,7 +144,7 @@ workers = 1
 
 
 def gen_comm(zstart, zend):
-    cmd = "python {}".format(script)
+    cmd = "{}".format(script)
     cmd += ' --datasource {}'.format(source_type)
     if source_type != 'render':
         if os.name == 'nt':
