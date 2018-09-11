@@ -21,6 +21,7 @@ setup(name='ndexchange',
       license='Apache 2.0',
       packages=find_packages(),
       install_requires=install_requires,
+      python_requires=">=3.5",
       keywords=[
           'brain',
           'microscopy',
