@@ -4,10 +4,12 @@ import os
 import shlex
 from subprocess import list2cmdline
 
-""" Script to generate ingest commands for ingest program """
-""" Once generated, copy commands to terminal and run them """
-
-""" Recommend copy this to a new location for editing """
+""" 
+Script to generate ingest commands for ingest program 
+Once generated, copy commands to terminal and run them 
+Recommend copy this to a new location for editing 
+If on windows, run commands in PowerShell, not command prompt
+"""
 
 
 script = "ndpush"
@@ -280,7 +282,8 @@ if zrange:
         end_z = min(zrange[1], next_z)
 
         cmd = gen_comm(start_z, end_z)
-        cmd += " &"
+        if os.name != 'nt':
+            cmd += ' &'
         print(cmd + '\n')
 
 else:
@@ -290,5 +293,6 @@ else:
     print(cmd + '\n')
 
     cmd = gen_comm(None, None)
-    cmd += ' &'
+    if os.name != 'nt':
+        cmd += ' &'
     print(cmd + '\n')
