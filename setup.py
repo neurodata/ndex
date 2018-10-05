@@ -38,5 +38,7 @@ setup(name='ndexchange',
       zip_safe=False,
       entry_points={'console_scripts':
                     ['ndpull=ndex.ndpull.ndpull:main',
-                     'ndpush=ndex.ndpush.ingest_large_vol:main'], },
+                     'ndpush=ndex.ndpush.ingest_large_vol:main',
+                     'expand_stacks=scripts.expand_stacks:main',
+                     ], },
       )

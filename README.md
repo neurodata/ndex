@@ -78,6 +78,15 @@ See [example.py](examples/example_ndpull.py)
 - Add your experiment details and run it from within the activated python environment (`python gen_commands.py`).  It will generate command lines to run and estimate the amount of memory needed.  You can then copy and run those commands.
 - Alternatively, run: `ndpush -h` to see the complete list of command line options.
 
+### Expand stacks
+
+Currently, tiff stacks are not natively supported for ingest.  We provide a [script](scripts/expand_stacks.py) to expand a tiff stack to disk which can be run prior to doing an ingest.  [Fiji](https://fiji.sc/) could be used instead (`Save as... Image Sequence...`).  After ndex is installed, `expand_stacks` should be available to use from the command line:
+
+```sh
+usage: expand_stacks.py [-h] [--datatype DATATYPE] [--split_RGB]
+                        tiffstack [outpath]
+```
+
 ## Testing
 
 We use [pytest](https://pytest.org/) as our testing library.  To run the tests:

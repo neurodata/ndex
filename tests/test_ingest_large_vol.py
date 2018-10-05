@@ -20,7 +20,7 @@ class TestIngestLargeVol:
     def setup(self):
         self.args = Namespace(datasource='local',
                               base_filename='img_<ch>_<p:4>',
-                              base_path='local_img_test_data/',
+                              base_path='test_images/',
                               boss_config_file=None,
                               collection='ben_dev',
                               experiment='dev_ingest_4',
@@ -165,6 +165,7 @@ class TestIngestLargeVol:
         boss_res_params.rmt.delete_project(boss_res_params.ch_resource)
         boss_res_params.rmt.delete_project(boss_res_params.exp_resource)
         os.remove(ingest_job.get_log_fname())
+        del_test_images(ingest_job)
 
     def test_post_uint16_cutout_offset_pixels(self):
         now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
@@ -381,6 +382,7 @@ class TestIngestLargeVol:
             gen_images(ingest_job)
             result = per_channel_ingest(args, channel)
             assert result == 0
+            del_test_images(ingest_job)
 
     # def test_ingest_render_stack(self):
     #     now = datetime.now().strftime("%Y%m%d-%H%M%S%f")
