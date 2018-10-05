@@ -337,7 +337,6 @@ class TestIngestLargeVol:
             ch_args = self.args
             ch_args.channel = ch
             ingest_job = IngestJob(ch_args)
-            del_test_images(ingest_job)
             os.remove(ingest_job.get_log_fname())
             boss_res_params = BossResParams(ingest_job)
             boss_res_params.get_resources(get_only=True)
