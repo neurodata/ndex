@@ -1,12 +1,12 @@
 blosc==1.4.4
-requests>=2.19.1
-numpy>=1.15.2
-tifffile>=0.15.1
+requests>=2.20.0
+numpy>=1.15.3
+tifffile>=2018.10.18
 Pillow>=5.3.0
-tqdm>=4.26.0
+tqdm>=4.28.1
 intern>=0.9.10
 slacker>=0.9.65
 boto3>=1.9.17
 tailer>=0.4.1
 pypng>=0.0.18
-nibabel>=2.3.0
+nibabel>=2.3.1
