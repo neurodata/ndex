@@ -140,14 +140,14 @@ class TestIngestLargeVol:
         im_array = ingest_job.read_img_stack(z_slices)
 
         threads = 8
-        pool = ThreadPool(threads)
 
         ingest_block_partial = partial(
             ingest_block, x_buckets=x_buckets, boss_res_params=boss_res_params, ingest_job=ingest_job,
             y_rng=y_rng, z_rng=self.args.z_range, im_array=im_array)
 
         start_time = time.time()
-        pool.map(ingest_block_partial, x_buckets.keys())
+        with ThreadPool(threads) as pool:
+            pool.map(ingest_block_partial, x_buckets.keys())
         time_taken = time.time() - start_time
         print('{} secs taken with {} threads'.format(time_taken, threads))
 

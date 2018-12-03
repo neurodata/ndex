@@ -77,8 +77,8 @@ class renderResource:
                      min(stride, y[-1] - y[0] + 1), window))
 
         # firing off the requests
-        pool = ThreadPool(threads)
-        data_array = pool.starmap(self.get_render_tile, args)
+        with ThreadPool(threads) as pool:
+            data_array = pool.starmap(self.get_render_tile, args)
 
         # initialize to the size of the return data (scaled if necessary)
         im_array = np.zeros([tile_size * len(y_buckets),

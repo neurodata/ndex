@@ -215,23 +215,23 @@ def per_channel_ingest(args, channel, threads=8):
     y_buckets = get_supercube_lims(ingest_job.y_extent, stride_y)
     z_buckets = get_supercube_lims(ingest_job.z_range, stride_z)
 
-    pool = ThreadPool(threads)
+    with ThreadPool(threads) as pool:
 
-    # load images files in stacks of 16 at a time into numpy array
-    for _, z_slices in z_buckets.items():
-        # read images into numpy array
-        im_array = ingest_job.read_img_stack(z_slices)
-        z_rng = [z_slices[0] - ingest_job.offsets[2],
-                 z_slices[-1] + 1 - ingest_job.offsets[2]]
+        # load images files in stacks of 16 at a time into numpy array
+        for _, z_slices in z_buckets.items():
+            # read images into numpy array
+            im_array = ingest_job.read_img_stack(z_slices)
+            z_rng = [z_slices[0] - ingest_job.offsets[2],
+                     z_slices[-1] + 1 - ingest_job.offsets[2]]
 
-        # slice into np array blocks
-        for _, y_slices in y_buckets.items():
-            y_rng = [y_slices[0], y_slices[-1] + 1]
+            # slice into np array blocks
+            for _, y_slices in y_buckets.items():
+                y_rng = [y_slices[0], y_slices[-1] + 1]
 
-            ingest_block_partial = partial(
-                ingest_block, x_buckets=x_buckets, boss_res_params=boss_res_params, ingest_job=ingest_job,
-                y_rng=y_rng, z_rng=z_rng, im_array=im_array)
-            pool.map(ingest_block_partial, x_buckets.keys())
+                ingest_block_partial = partial(
+                    ingest_block, x_buckets=x_buckets, boss_res_params=boss_res_params, ingest_job=ingest_job,
+                    y_rng=y_rng, z_rng=z_rng, im_array=im_array)
+                pool.map(ingest_block_partial, x_buckets.keys())
 
     # checking data posted correctly for an entire z slice
     assert_equal(boss_res_params, ingest_job, ingest_job.z_range)
