@@ -237,7 +237,7 @@ def per_channel_ingest(args, channel, threads=8):
     assert_equal(boss_res_params, ingest_job, ingest_job.z_range)
 
     ch_link = (
-        'http://ndwt.neurodata.io/channel_detail/{}/{}/{}/').format(ingest_job.coll_name, ingest_job.exp_name, ingest_job.ch_name)
+        'https://ndwebtools.neurodata.io/channel_detail/{}/{}/{}/').format(ingest_job.coll_name, ingest_job.exp_name, ingest_job.ch_name)
 
     ingest_job.send_msg('{} Finished z slices {} for Collection: {}, Experiment: {}, Channel: {}\nThere were {} read failures and {} POST failures.\nView properties of channel and start downsample job on ndwebtools: {}'.format(
         get_formatted_datetime(),
