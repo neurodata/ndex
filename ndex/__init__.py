@@ -3,7 +3,7 @@ Python 3 program to download & upload data from NeuroData
 """
 
 
-version = "1.0.9"
+version = "1.0.10"
 
 
 def check_version():

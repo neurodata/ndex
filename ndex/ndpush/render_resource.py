@@ -133,11 +133,11 @@ class renderResource:
         stats = resp["stats"]
 
         x_start = round(stats["stackBounds"]["minX"])
-        x_stop = round(stats["stackBounds"]["maxX"])
+        x_stop = round(stats["stackBounds"]["maxX"]) + 1
         y_start = round(stats["stackBounds"]["minY"])
-        y_stop = round(stats["stackBounds"]["maxY"])
+        y_stop = round(stats["stackBounds"]["maxY"]) + 1
         z_start = round(stats["stackBounds"]["minZ"])
-        z_stop = round(stats["stackBounds"]["maxZ"])
+        z_stop = round(stats["stackBounds"]["maxZ"]) + 1
 
         self.x_rng_unscaled = [x_start, x_stop]
         self.y_rng_unscaled = [y_start, y_stop]

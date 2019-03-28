@@ -1,10 +1,10 @@
 # ndex
 
-[![PyPI version](https://badge.fury.io/py/ndexchange.svg)](https://badge.fury.io/py/ndexchange) 
+[![PyPI version](https://badge.fury.io/py/ndexchange.svg)](https://badge.fury.io/py/ndexchange)
 [![Build Status](https://travis-ci.org/neurodata/ndex.svg?branch=master)](https://travis-ci.org/neurodata/ndex)
 [![Coverage Status](https://coveralls.io/repos/github/neurodata/ndpull/badge.svg?branch=master)](https://coveralls.io/github/neurodata/ndpull?branch=master)
 
-Python 3 command-line program to exchange (download/upload) image data with NeuroData's cloud deployment of APL's BOSS spatial database: <https://github.com/jhuapl-boss>.  View available data at [ndweb](https://ndwebtools.neurodata.io/) or [neurodata.io](https://neurodata.io/).
+Python 3 command-line program to exchange (download/upload) image data with NeuroData's cloud deployment of APL's BOSS spatial database: <https://github.com/jhuapl-boss>. View available data at [ndweb](https://ndwebtools.neurodata.io/) or [neurodata.io](https://neurodata.io/).
 
 ## Features
 
@@ -17,18 +17,20 @@ Python 3 command-line program to exchange (download/upload) image data with Neur
 
 ## Considerations
 
-Uploading loads 16 images/slices (either PNG or TIFF) at a time into memory and POSTs the data in blocks for optimal network performance with the block level storage of the BOSS.  With large image tiles this can be memory intensive (16GB or more ram recommended).  This tool can be run simultaneously with non overlapping z-slices to increase the speed of the ingest (assisting program `gen_commands.py`).
+Uploading loads 16 images/slices (either PNG or TIFF) at a time into memory and POSTs the data in blocks for optimal network performance with the block level storage of the BOSS. With large image tiles this can be memory intensive (16GB or more ram recommended). This tool can be run simultaneously with non overlapping z-slices to increase the speed of the ingest (assisting program `gen_commands.py`).
 
 **Note:** Formerly two separate programs: [ndpull](https://github.com/neurodata-arxiv/ndpull) & [ndpush](https://github.com/neurodata-arxiv/ndpush).
 
 ## Install
 
-- Install or insure you have [Python 3](https://www.python.org/downloads/) (x64).  Versions 3.5, 3.6, 3.7 supported
+- Install or insure you have [Python 3](https://www.python.org/downloads/) (x64). Versions 3.5, 3.6, 3.7 supported
 
   `python --version`
+
 - Create a python 3 [virtual environment](https://virtualenv.pypa.io/en/stable/)
 
   `virtualenv env`
+
 - Activate virtual environment
 
 - Install compiler for Windows
@@ -36,9 +38,11 @@ Uploading loads 16 images/slices (either PNG or TIFF) at a time into memory and 
   - [Visual C++ Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2017)
 
 - Install
+
   - Via PyPI (Preferred)
 
     `pip install ndexchange`
+
   - From github (Latest dev version)
 
     `pip install git+git://github.com/neurodata/ndex.git`
@@ -55,7 +59,7 @@ Uploading loads 16 images/slices (either PNG or TIFF) at a time into memory and 
 
 ### Command line usage
 
-*Note: please use PowerShell if on Windows*
+_Note: please use PowerShell if on Windows_
 
 To see the full list of options, run the following command:
 
@@ -75,12 +79,12 @@ See [example.py](examples/example_ndpull.py)
 
 - Please contact NeuroData for required (resource-manager) privileges before starting an ingest.
 - To generate an ingest's command line arguments, create and edit a file copied from provided example: [gen_commands.example.py](examples/gen_commands.example.py).
-- Add your experiment details and run it from within the activated python environment (`python gen_commands.py`).  It will generate command lines to run and estimate the amount of memory needed.  You can then copy and run those commands.
+- Add your experiment details and run it from within the activated python environment (`python gen_commands.py`). It will generate command lines to run and estimate the amount of memory needed. You can then copy and run those commands.
 - Alternatively, run: `ndpush -h` to see the complete list of command line options.
 
 ### Expand stacks
 
-Currently, tiff stacks are not natively supported for ingest.  We provide a [script](scripts/expand_stacks.py) to expand a tiff stack to disk which can be run prior to doing an ingest.  [Fiji](https://fiji.sc/) could be used instead (`Save as... Image Sequence...`).  After ndex is installed, `expand_stacks` should be available to use from the command line:
+Currently, tiff stacks are not natively supported for ingest. We provide a [script](scripts/expand_stacks.py) to expand a tiff stack to disk which can be run prior to doing an ingest. [Fiji](https://fiji.sc/) could be used instead (`Save as... Image Sequence...`). After ndex is installed, `expand_stacks` should be available to use from the command line:
 
 ```sh
 usage: expand_stacks.py [-h] [--datatype DATATYPE] [--split_RGB]
@@ -89,11 +93,12 @@ usage: expand_stacks.py [-h] [--datatype DATATYPE] [--split_RGB]
 
 ## Testing
 
-We use [pytest](https://pytest.org/) as our testing library.  To run the tests:
+We use [pytest](https://pytest.org/) as our testing library. To run the tests:
 
 - Install testing requirements in your virtual environment: `pip install pytest`
 
 For running with vscode (where you can set the env file) or on travis-ci:
+
 - Create a `.env` file and copy the following line of code, inserting your own API token into it:
   ```ini
   BOSS_TOKEN=<<your token from https://api.boss.neurodata.io/token/ here>>
@@ -101,16 +106,18 @@ For running with vscode (where you can set the env file) or on travis-ci:
   ```
 - Configure your test environment to load that file into your environmental variables (in [vscode](https://code.visualstudio.com/docs/python/environments#_where-the-extension-looks-for-environments) set the `python.envFile` option to `"${workspaceFolder}/.env"`)
 - Follow this guide to add the tokens to your travis.yml file:
-https://docs.travis-ci.com/user/encryption-keys/
+  https://docs.travis-ci.com/user/encryption-keys/
 
 If running pytest from the command line, create a pytest.ini file in the root directory ([example](examples/pytest.ini.example))
-- Install plugin for pytest to automatically load the environment variables: `pip isntall pytest-env`
+
+- Install plugin for pytest to automatically load the environment variables: `pip install pytest-env`
 - Run all the tests from the command line: `python -m pytest`
 - Or for a particular function in a file: `python -m pytest .\tests\test_ndpull.py::Testndpull::test_print_meta`
 
 Notes:
+
 - You'll need to edit the tests to use your slack username
-- Some tests may fail as a result of not having access to specific BOSS resources.  Either modify the tests to use different resources or contact NeuroData to gain access (specifically need to be added to the `dev` group in the BOSS).
+- Some tests may fail as a result of not having access to specific BOSS resources. Either modify the tests to use different resources or contact NeuroData to gain access (specifically need to be added to the `dev` group in the BOSS).
 
 ## Publish new version
 
